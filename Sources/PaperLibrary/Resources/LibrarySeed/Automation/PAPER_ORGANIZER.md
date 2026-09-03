@@ -19,10 +19,14 @@ The current working directory is Paper Library's app-managed storage. Process on
 ## Processing order
 
 1. Confirm that the PDF opens and determine whether it is an academic paper.
-2. Extract the title, authors, affiliations, key findings, and methodological novelty from the first page and body.
-3. Use live web search to verify the venue, official conference or journal year, track, and presentation type. If a venue is confirmed, use its official publication year instead of the arXiv posting year.
-4. Classify the paper into a one- or two-level topic folder inside `Papers/`, rename it to its official title, and move it.
-5. Update `Catalog/papers.csv` without duplicates.
+2. Extract the official title from the first page. As soon as it is known, publish it to the app before doing any web research or other metadata work:
+
+  `node Automation/paper-organizer.mjs progress --file "Waiting/file.pdf" --title "Official Paper Title"`
+
+3. Extract the authors, affiliations, key findings, and methodological novelty from the first page and body.
+4. Use live web search to verify the venue, official conference or journal year, track, and presentation type. If a venue is confirmed, use its official publication year instead of the arXiv posting year.
+5. Classify the paper into a one- or two-level topic folder inside `Papers/`, rename it to its official title, and move it.
+6. Update `Catalog/papers.csv` without duplicates.
 
 ## Reading papers and verifying sources
 

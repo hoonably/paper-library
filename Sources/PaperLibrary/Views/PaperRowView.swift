@@ -27,6 +27,38 @@ struct PaperRowView: View {
     }
 }
 
+struct ProcessingPaperRowView: View {
+    let paper: ProcessingPaperStatus
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 11) {
+            ProgressView()
+                .controlSize(.small)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(paper.displayTitle)
+                    .font(.headline)
+                    .lineLimit(3)
+
+                if paper.hasResolvedTitle {
+                    Text(paper.filename)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
+                Text("Processing with Codex")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.blue)
+            }
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct PresentationBadge: View {
     let presentation: String
 

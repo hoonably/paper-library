@@ -442,9 +442,7 @@ struct ContentView: View {
                     Image(systemName: "books.vertical")
                 }
                 .tag(SidebarSelection.allPapers)
-            }
 
-            Section("Fields") {
                 ForEach(store.categories, id: \.name) { category in
                     let subcategories = store.subcategories(in: category.name)
 
@@ -490,11 +488,21 @@ struct ContentView: View {
     }
 
     private var paperList: some View {
-        VStack(spacing: 0) {
+        let processingPapers = store.organizerStatus.processingPapers
+
+        return VStack(spacing: 0) {
             HStack {
                 Text("\(filteredPapers.count) \(filteredPapers.count == 1 ? "paper" : "papers")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if !processingPapers.isEmpty {
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Text("\(processingPapers.count) processing")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.blue)
+                }
                 Spacer()
                 if hasActiveFilters {
                     Button("Clear Filters") { clearFilters() }
@@ -506,7 +514,7 @@ struct ContentView: View {
             .padding(.vertical, 8)
             .background(.bar)
 
-            if filteredPapers.isEmpty {
+            if filteredPapers.isEmpty && processingPapers.isEmpty {
                 if store.papers.isEmpty, !hasActiveFilters {
                     ContentUnavailableView(
                         "No Papers Yet",
@@ -517,18 +525,28 @@ struct ContentView: View {
                     ContentUnavailableView.search(text: searchText)
                 }
             } else {
-                List(filteredPapers, selection: listSelection) { paper in
-                    PaperRowView(paper: paper)
-                        .tag(paper.file)
-                        .contextMenu {
-                            Button("Open PDF") { store.openPDF(paper) }
-                            Button("Show in Finder") { store.revealPDF(paper) }
-                            Divider()
-                            Button("Edit Metadata…") {
-                                selectedFile = paper.file
-                                editingPaper = paper
+                List(selection: listSelection) {
+                    if !processingPapers.isEmpty {
+                        Section("Processing") {
+                            ForEach(processingPapers) { processingPaper in
+                                ProcessingPaperRowView(paper: processingPaper)
                             }
                         }
+                    }
+
+                    ForEach(filteredPapers) { paper in
+                        PaperRowView(paper: paper)
+                            .tag(paper.file)
+                            .contextMenu {
+                                Button("Open PDF") { store.openPDF(paper) }
+                                Button("Show in Finder") { store.revealPDF(paper) }
+                                Divider()
+                                Button("Edit Metadata…") {
+                                    selectedFile = paper.file
+                                    editingPaper = paper
+                                }
+                            }
+                    }
                 }
                 .listStyle(.inset)
             }

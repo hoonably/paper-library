@@ -7,9 +7,3 @@ DerivedData/
 *.xcarchive
 xcuserdata/
 *.xcuserstate
-
-# Local library data
-/.catalog/
-/.setting/
-/paper/
-/papers.html

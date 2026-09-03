@@ -59,6 +59,7 @@ if find "$app_bundle/Contents" -type f \( \
   -name 'papers.csv' -o \
   -name 'organizer-settings.json' -o \
   -name 'runtime-status.json' -o \
+  -name 'processing-papers.json' -o \
   -name 'papers.html' \
 \) -print -quit | grep -q .; then
   print -u2 "Private library data was packaged inside the app."

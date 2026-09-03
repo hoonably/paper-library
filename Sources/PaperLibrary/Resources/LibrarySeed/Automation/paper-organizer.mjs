@@ -22,6 +22,7 @@ const CATALOG_DIRECTORY = "Catalog";
 const AUTOMATION_DIRECTORY = "Automation";
 const WAITING_DIRECTORY = "Waiting";
 const ORGANIZER_SETTINGS_FILE = path.join(CATALOG_DIRECTORY, "organizer-settings.json");
+const PROCESSING_PAPERS_FILE = path.join(CATALOG_DIRECTORY, "processing-papers.json");
 const ORGANIZED_PAPERS_DIRECTORY = "Papers";
 const RECOMMENDED_MODEL = "gpt-5.6-terra";
 const RECOMMENDED_REASONING = "medium";
@@ -397,34 +398,6 @@ async function fileSha256(file) {
   return hash.digest("hex");
 }
 
-function pdfMetadataTitle(file) {
-  const pdfinfo = executableOnPath("pdfinfo")[0];
-  if (!pdfinfo) return "";
-  try {
-    const result = spawnSync(pdfinfo, [file], {
-      encoding: "utf8",
-      timeout: 10_000,
-      windowsHide: true,
-    });
-    if (result.status !== 0) return "";
-    const title = (result.stdout.match(/^Title:\s*(.+)$/mi)?.[1] || "")
-      .replace(/\s+/g, " ")
-      .trim();
-    const stem = path.basename(file, path.extname(file));
-    if (!title || /^untitled$/i.test(title) || title.localeCompare(stem, undefined, { sensitivity: "base" }) === 0) {
-      return "";
-    }
-    return title;
-  } catch {
-    return "";
-  }
-}
-
-function candidateDisplayName(root, candidate) {
-  const title = pdfMetadataTitle(path.join(root, candidate.file));
-  return title ? `${candidate.file} → ${title}` : candidate.file;
-}
-
 async function topLevelPdfSnapshots(root) {
   const waitingRoot = path.join(root, WAITING_DIRECTORY);
   const entries = await fsp.readdir(waitingRoot, { withFileTypes: true });
@@ -470,6 +443,33 @@ function safeTopLevelPdf(root, value) {
     throw new Error(`The file must be a top-level PDF inside ${WAITING_DIRECTORY}/.`);
   }
   return absolute;
+}
+
+async function replaceProcessingPapers(root, candidates) {
+  const file = path.join(root, PROCESSING_PAPERS_FILE);
+  await writeJson(file, {
+    version: 1,
+    items: candidates.map((candidate) => ({ file: candidate.file, title: null })),
+  });
+}
+
+async function updateProcessingPaperTitle(root, value, title) {
+  const absolute = safeTopLevelPdf(root, value);
+  const relativeFile = path.posix.join(WAITING_DIRECTORY, path.basename(absolute));
+  const cleanedTitle = String(title || "").replace(/\s+/g, " ").trim();
+  if (!cleanedTitle) throw new Error("--title must contain a paper title.");
+
+  const file = path.join(root, PROCESSING_PAPERS_FILE);
+  const document = await readJson(file, { version: 1, items: [] });
+  const items = Array.isArray(document.items) ? document.items : [];
+  const index = items.findIndex((item) => item?.file === relativeFile);
+  if (index < 0) throw new Error(`${relativeFile} is not in the active processing batch.`);
+  items[index] = { file: relativeFile, title: cleanedTitle };
+  await writeJson(file, { version: 1, items });
+}
+
+async function clearProcessingPapers(root) {
+  await replaceProcessingPapers(root, []);
 }
 
 function safeLibraryPdf(root, value) {
@@ -1017,34 +1017,53 @@ async function scan(runtime, waitMs = STABILITY_WAIT_MS, watcherStatus = null) {
     return false;
   }
   const currentFiles = candidates.map((item) => item.file);
+  await replaceProcessingPapers(runtime.root, candidates);
   updateWatcherStatus(watcherStatus, {
     phase: "processing",
     currentFiles,
-    currentDisplayFiles: candidates.map((candidate) => candidateDisplayName(runtime.root, candidate)),
+    currentDisplayFiles: currentFiles.map((file) => path.basename(file)),
     queuedFiles: await pendingTopLevelPdfNames(runtime, currentFiles),
     processingStartedAt: new Date().toISOString(),
   });
   console.log(`Processing ${candidates.length} new PDF(s): ${candidates.map((item) => item.file).join(", ")}`);
-  await runCodex(runtime, candidates, execution);
-  if (watcherStatus) {
-    const nextExecution = await executionConfiguration(runtime);
-    const queuedFiles = nextExecution.isAutomationDevice ? await pendingTopLevelPdfNames(runtime) : [];
-    updateWatcherStatus(watcherStatus, {
-      ...executionStatus(nextExecution, runtime),
-      phase: nextExecution.isAutomationDevice ? (queuedFiles.length ? "queued" : "idle") : "remote",
-      currentFiles: [],
-      currentDisplayFiles: [],
-      queuedFiles,
-      processingStartedAt: null,
-      lastCompletedAt: new Date().toISOString(),
-      lastCompletedFiles: currentFiles,
-    });
+  try {
+    await runCodex(runtime, candidates, execution);
+    if (watcherStatus) {
+      const nextExecution = await executionConfiguration(runtime);
+      const queuedFiles = nextExecution.isAutomationDevice ? await pendingTopLevelPdfNames(runtime) : [];
+      updateWatcherStatus(watcherStatus, {
+        ...executionStatus(nextExecution, runtime),
+        phase: nextExecution.isAutomationDevice ? (queuedFiles.length ? "queued" : "idle") : "remote",
+        currentFiles: [],
+        currentDisplayFiles: [],
+        queuedFiles,
+        processingStartedAt: null,
+        lastCompletedAt: new Date().toISOString(),
+        lastCompletedFiles: currentFiles,
+      });
+      await watcherStatus.publish?.();
+    }
+    return true;
+  } catch (error) {
+    if (watcherStatus) {
+      updateWatcherStatus(watcherStatus, {
+        phase: "error",
+        currentFiles: [],
+        currentDisplayFiles: [],
+        processingStartedAt: null,
+        lastError: error.message || String(error),
+      });
+      await watcherStatus.publish?.();
+    }
+    throw error;
+  } finally {
+    await clearProcessingPapers(runtime.root);
   }
-  return true;
 }
 
 async function watch(runtime) {
   console.log(`Watching ${runtime.root}`);
+  await clearProcessingPapers(runtime.root);
   const initialExecution = await executionConfiguration(runtime);
   const watcherStatus = {
     version: 1,
@@ -1495,6 +1514,11 @@ async function install(root, options) {
       settings.reasoning = normalizeOrganizerReasoning(options.reasoning);
       settingsChanged = true;
     }
+    if (options.language !== undefined) {
+      settings.language = normalizeOrganizerLanguage(options.language);
+      settings.catalogTranslation = null;
+      settingsChanged = true;
+    }
   }
   const mergedOptions = {
     ...options,
@@ -1673,6 +1697,7 @@ Agent helper commands:
   node Automation/paper-organizer.mjs candidates
   node Automation/paper-organizer.mjs text --file Waiting/FILE.pdf [--from PAGE] [--to PAGE]
   node Automation/paper-organizer.mjs ignore --file Waiting/FILE.pdf
+  node Automation/paper-organizer.mjs progress --file Waiting/FILE.pdf --title TITLE
   node Automation/paper-organizer.mjs same --left Waiting/FILE.pdf --right Papers/Field/FILE.pdf
   node Automation/paper-organizer.mjs sanitize --title TITLE
 `);
@@ -1711,6 +1736,11 @@ async function main() {
   if (command === "ignore") {
     if (!options.file) throw new Error("--file is required.");
     return ignorePdf(root, paths, options.file);
+  }
+  if (command === "progress") {
+    if (!options.file || !options.title) throw new Error("--file and --title are required.");
+    await updateProcessingPaperTitle(root, options.file, options.title);
+    return;
   }
   if (command === "same") {
     if (!options.left || !options.right) throw new Error("--left and --right are required.");

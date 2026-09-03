@@ -175,6 +175,33 @@ do {
     try check(organizerStatus.automationDeviceName == "Office Mac", "Remote automation device was not read")
     try check(organizerStatus.phase == "processing", "Organizer phase was not read")
     try check(organizerStatus.activeFiles == ["Queued Paper.pdf"], "Active PDF names were not read")
+    try check(organizerStatus.processingPapers.isEmpty, "A display-only status became a processing paper")
+
+    let progressiveRuntimeJSON = """
+    {"phase":"processing","machine":"Office Mac","currentFiles":["Waiting/2605.13778v1.pdf"],"queuedFiles":[],"lastError":"","updatedAt":"2026-09-02T01:02:03.456Z"}
+    """
+    try progressiveRuntimeJSON.write(
+        to: catalogDirectory.appendingPathComponent("runtime-status.json"),
+        atomically: true,
+        encoding: .utf8
+    )
+    let filenameOnlyStatus = OrganizerStatusFile.read(from: library, now: statusTime)
+    try check(filenameOnlyStatus.processingPapers.count == 1, "The processing paper was not shown before its title was resolved")
+    try check(filenameOnlyStatus.processingPapers[0].displayTitle == "2605.13778v1.pdf", "The original filename was not used as the initial title")
+
+    let processingJSON = """
+    {"version":1,"items":[{"file":"Waiting/2605.13778v1.pdf","title":"Resolved Paper Title"}]}
+    """
+    try processingJSON.write(
+        to: catalogDirectory.appendingPathComponent("processing-papers.json"),
+        atomically: true,
+        encoding: .utf8
+    )
+    let progressiveStatus = OrganizerStatusFile.read(from: library, now: statusTime)
+    try check(progressiveStatus.processingPapers.count == 1, "The active processing paper was not decoded")
+    try check(progressiveStatus.processingPapers[0].filename == "2605.13778v1.pdf", "The original PDF filename was not preserved")
+    try check(progressiveStatus.processingPapers[0].displayTitle == "Resolved Paper Title", "The resolved paper title was not shown")
+    try check(progressiveStatus.activeFiles == ["Resolved Paper Title"], "The status badge did not use the resolved title")
 
     let staleTime = try Date("2026-09-02T01:05:04Z", strategy: .iso8601)
     let staleStatus = OrganizerStatusFile.read(from: library, now: staleTime)

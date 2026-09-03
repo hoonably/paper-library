@@ -8,17 +8,18 @@ zip_path="$destination_root/Paper-Library.zip"
 temporary_directory="$(mktemp -d)"
 staged_app="$temporary_directory/Paper Library.app"
 staged_zip="$temporary_directory/Paper-Library.zip"
+scratch_directory="$temporary_directory/swift-build"
 trap 'rm -rf "$temporary_directory"' EXIT
 
 cd "$repository_root"
-swift build -c release
+swift build -c release --scratch-path "$scratch_directory"
 
 mkdir -p "$destination_root"
 rm -rf "$app_bundle"
 rm -f "$zip_path"
 mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources"
 
-cp ".build/release/PaperLibrary" "$staged_app/Contents/MacOS/PaperLibrary"
+cp "$scratch_directory/release/PaperLibrary" "$staged_app/Contents/MacOS/PaperLibrary"
 cp "PaperLibrary/Info.plist" "$staged_app/Contents/Info.plist"
 ditto "Sources/PaperLibrary/Resources/LibrarySeed" "$staged_app/Contents/Resources/LibrarySeed"
 

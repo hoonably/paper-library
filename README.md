@@ -6,7 +6,7 @@ Finder에서 PDF를 바로 추가하면 Codex가 읽고 확인한 뒤 분야별�
   <img src="docs/images/app-overview.png" alt="Paper Library 앱 화면" width="100%">
 </p>
 
-현재는 소수 사용자를 위한 초기 베타 버전입니다. **macOS 14 이상이 설치된 Apple Silicon Mac**과 로그인된 **Codex CLI**가 필요합니다.
+현재는 소수 사용자를 위한 초기 베타 버전입니다. **macOS 14 이상이 설치된 Apple Silicon Mac**과 로그인된 **[Codex CLI](https://developers.openai.com/codex/cli)**가 필요합니다.
 
 ## 처음 시작하기
 

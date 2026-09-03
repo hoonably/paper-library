@@ -43,6 +43,30 @@ private struct RuntimeStatusDocument: Decodable {
     let updatedAt: String?
 }
 
+private struct ProcessingPapersDocument: Decodable {
+    let items: [ProcessingPaperStatus]
+}
+
+struct ProcessingPaperStatus: Codable, Equatable, Identifiable {
+    let file: String
+    let title: String?
+
+    var id: String { file }
+
+    var filename: String {
+        (file as NSString).lastPathComponent
+    }
+
+    var displayTitle: String {
+        let cleanedTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return cleanedTitle.isEmpty ? filename : cleanedTitle
+    }
+
+    var hasResolvedTitle: Bool {
+        !(title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+}
+
 enum OrganizerSetting: String {
     case model
     case reasoning
@@ -66,6 +90,7 @@ struct OrganizerStatus: Equatable {
     var language: String
     var activeFiles: [String]
     var queuedFiles: [String]
+    var processingPapers: [ProcessingPaperStatus]
     var lastCompletedAt: String?
     var lastError: String
     var updatedAt: String?
@@ -79,6 +104,7 @@ struct OrganizerStatus: Equatable {
         language: "korean",
         activeFiles: [],
         queuedFiles: [],
+        processingPapers: [],
         lastCompletedAt: nil,
         lastError: "",
         updatedAt: nil
@@ -120,6 +146,7 @@ struct OrganizerStatus: Equatable {
 enum OrganizerStatusFile {
     private static let settingsPath = "Catalog/organizer-settings.json"
     private static let runtimePath = "Catalog/runtime-status.json"
+    private static let processingPath = "Catalog/processing-papers.json"
     private static let staleAfter: TimeInterval = 120
 
     static func read(from root: URL, now: Date = Date()) -> OrganizerStatus {
@@ -130,16 +157,34 @@ enum OrganizerStatusFile {
             at: root.appendingPathComponent(runtimePath)
         )
 
+        let processingDocument: ProcessingPapersDocument? = decodeJSON(
+            at: root.appendingPathComponent(processingPath)
+        )
+
         let configuredDevice = settings?.automationDevice ?? runtime?.automationDevice
-        let activeFiles = runtime?.currentDisplayFiles?.isEmpty == false
-            ? runtime?.currentDisplayFiles ?? []
-            : runtime?.currentFiles ?? []
         let runtimeIsFresh = runtime.flatMap { runtime in
             guard let value = runtime.updatedAt,
                   let updatedAt = try? Date(value, strategy: .iso8601)
             else { return false }
             return now.timeIntervalSince(updatedAt) <= staleAfter
         } ?? false
+        let currentFiles = runtime?.currentFiles ?? []
+        let progressByFile = (processingDocument?.items ?? []).reduce(
+            into: [String: ProcessingPaperStatus]()
+        ) { result, item in
+            result[item.file] = item
+        }
+        let processingPapers = runtimeIsFresh && runtime?.phase == "processing"
+            ? currentFiles.map { progressByFile[$0] ?? ProcessingPaperStatus(file: $0, title: nil) }
+            : []
+        let activeFiles: [String]
+        if !processingPapers.isEmpty {
+            activeFiles = processingPapers.map(\.displayTitle)
+        } else if runtime?.currentDisplayFiles?.isEmpty == false {
+            activeFiles = runtime?.currentDisplayFiles ?? []
+        } else {
+            activeFiles = currentFiles
+        }
         let connectionError: String
         if runtimeIsFresh {
             connectionError = runtime?.lastError ?? ""
@@ -160,6 +205,7 @@ enum OrganizerStatusFile {
             language: settings?.language ?? runtime?.configuredLanguage ?? runtime?.language ?? "korean",
             activeFiles: runtimeIsFresh ? activeFiles : [],
             queuedFiles: runtimeIsFresh ? runtime?.queuedFiles ?? [] : [],
+            processingPapers: processingPapers,
             lastCompletedAt: runtime?.lastCompletedAt,
             lastError: connectionError,
             updatedAt: runtime?.updatedAt
