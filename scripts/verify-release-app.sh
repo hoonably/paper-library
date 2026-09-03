@@ -34,17 +34,9 @@ fi
 
 entitlements="$(mktemp)"
 trap 'rm -f "$entitlements"' EXIT
-codesign -d --entitlements :- "$app_bundle" > "$entitlements" 2>/dev/null
-if [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$entitlements")" != "true" ]]; then
-  print -u2 "The App Sandbox entitlement is missing."
-  exit 65
-fi
-if [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.files.bookmarks.app-scope' "$entitlements")" != "true" ]]; then
-  print -u2 "The app-scoped bookmark entitlement is missing."
-  exit 65
-fi
-if [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.files.user-selected.read-write' "$entitlements")" != "true" ]]; then
-  print -u2 "The user-selected read/write entitlement is missing."
+if codesign -d --entitlements :- "$app_bundle" > "$entitlements" 2>/dev/null &&
+   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$entitlements" 2>/dev/null || true)" == "true" ]]; then
+  print -u2 "The app is sandboxed and cannot manage its shared Application Support storage."
   exit 65
 fi
 
@@ -54,10 +46,19 @@ if [[ "$service_name" != "Move to Paper Library" ]]; then
   exit 65
 fi
 
+for bundled_resource in \
+  "LibrarySeed/Automation/PAPER_ORGANIZER.md" \
+  "LibrarySeed/Automation/paper-organizer.mjs"; do
+  if [[ ! -f "$app_bundle/Contents/Resources/$bundled_resource" ]]; then
+    print -u2 "The app is missing $bundled_resource."
+    exit 65
+  fi
+done
+
 if find "$app_bundle/Contents" -type f \( \
   -name 'papers.csv' -o \
   -name 'organizer-settings.json' -o \
-  -name 'runtime-status.js' -o \
+  -name 'runtime-status.json' -o \
   -name 'papers.html' \
 \) -print -quit | grep -q .; then
   print -u2 "Private library data was packaged inside the app."

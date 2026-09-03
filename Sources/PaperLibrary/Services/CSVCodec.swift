@@ -9,6 +9,7 @@ enum CatalogCSVError: LocalizedError, Equatable {
     case invalidFile(row: Int, path: String)
     case duplicateFile(String)
     case invalidYear(row: Int)
+    case invalidPresentation(row: Int, value: String)
 
     var errorDescription: String? {
         switch self {
@@ -23,11 +24,13 @@ enum CatalogCSVError: LocalizedError, Equatable {
         case .emptyFile(let row):
             return "CSV row \(row) has an empty PDF path."
         case .invalidFile(let row, let path):
-            return "CSV row \(row) has a PDF path outside paper/: \(path)"
+            return "CSV row \(row) has a PDF path outside Papers/: \(path)"
         case .duplicateFile(let path):
             return "The catalog contains a duplicate PDF path: \(path)"
         case .invalidYear(let row):
             return "The year in CSV row \(row) must contain four digits."
+        case .invalidPresentation(let row, let value):
+            return "The presentation in CSV row \(row) is not supported: \(value)"
         }
     }
 }
@@ -38,54 +41,33 @@ enum CSVCodec {
         "title", "authors", "affiliation", "summary", "novelty", "site", "added_at", "file",
     ]
 
-    private static let legacyHeaders: [[String]] = {
-        func withStatus(_ source: [String]) -> [String] {
-            var copy = source
-            copy.insert("status", at: copy.firstIndex(of: "presentation")! + 1)
-            return copy
-        }
-        return [
-            withStatus(headers),
-            withStatus(headers.filter { $0 != "added_at" }),
-            withStatus(headers.filter { !["novelty", "added_at"].contains($0) }),
-            withStatus(headers.filter { !["subcategory", "novelty", "added_at"].contains($0) }),
-        ]
-    }()
-
     static func decode(_ text: String) throws -> [Paper] {
         var rows = try parse(text)
         guard !rows.isEmpty else { throw CatalogCSVError.empty }
         rows[0][0] = rows[0][0].replacingOccurrences(of: "\u{FEFF}", with: "")
         let actualHeaders = rows.removeFirst()
-        guard let sourceHeaders = ([headers] + legacyHeaders).first(where: { $0 == actualHeaders }) else {
+        guard actualHeaders == headers else {
             throw CatalogCSVError.invalidHeader(actualHeaders.joined(separator: ","))
         }
 
         var seenFiles = Set<String>()
         return try rows.enumerated().map { index, values in
             let rowNumber = index + 2
-            guard values.count == sourceHeaders.count else {
+            guard values.count == headers.count else {
                 throw CatalogCSVError.invalidColumnCount(
                     row: rowNumber,
-                    expected: sourceHeaders.count,
+                    expected: headers.count,
                     actual: values.count
                 )
             }
-            let record = Dictionary(uniqueKeysWithValues: zip(sourceHeaders, values))
+            let record = Dictionary(uniqueKeysWithValues: zip(headers, values))
             let file = record["file"] ?? ""
             guard !file.isEmpty else { throw CatalogCSVError.emptyFile(row: rowNumber) }
             guard seenFiles.insert(file).inserted else { throw CatalogCSVError.duplicateFile(file) }
 
             let rawPresentation = record["presentation"] ?? ""
-            let presentation: String
-            if ["Preprint", "Poster", "Spotlight", "Oral"].contains(rawPresentation) {
-                presentation = rawPresentation
-            } else if (record["status"] ?? "").contains("Preprint") || record["venue"] == "Technical Report" {
-                presentation = "Preprint"
-            } else if record["venue"] == "OSDI" {
-                presentation = "Oral"
-            } else {
-                presentation = "Poster"
+            guard ["Preprint", "Poster", "Spotlight", "Oral"].contains(rawPresentation) else {
+                throw CatalogCSVError.invalidPresentation(row: rowNumber, value: rawPresentation)
             }
 
             let paper = Paper(
@@ -95,7 +77,7 @@ enum CSVCodec {
                 year: record["year"] ?? "",
                 track: record["track"] ?? "",
                 workshop: record["workshop"] ?? "",
-                presentation: presentation,
+                presentation: rawPresentation,
                 title: record["title"] ?? "",
                 authors: record["authors"] ?? "",
                 affiliation: record["affiliation"] ?? "",

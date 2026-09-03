@@ -9,7 +9,36 @@ struct OrganizerStatusHeader: View {
                 .font(.title3.weight(.semibold))
                 .lineLimit(1)
 
-            statusBadge
+            if store.isAutomationConfigured {
+                statusBadge
+            } else {
+                Button {
+                    store.presentAutomationSetup()
+                } label: {
+                    HStack(spacing: 8) {
+                        if store.isSettingUpAutomation {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "bolt.fill")
+                                .foregroundStyle(.tint)
+                        }
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(store.isSettingUpAutomation ? "Setting Up…" : "Set Up Automation")
+                                .font(.callout.weight(.semibold))
+                            Text("Required once")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isSettingUpAutomation)
+                .help("Install the background organizer for this Mac.")
+            }
 
             Spacer(minLength: 8)
 
@@ -20,6 +49,7 @@ struct OrganizerStatusHeader: View {
                 displayName: modelName,
                 recommendedValue: "gpt-5.6-terra"
             ) { store.updateOrganizerSetting(.model, to: $0) }
+            .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
 
             SettingMenu(
                 title: "REASONING",
@@ -28,6 +58,7 @@ struct OrganizerStatusHeader: View {
                 displayName: reasoningName,
                 recommendedValue: "medium"
             ) { store.updateOrganizerSetting(.reasoning, to: $0) }
+            .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
 
             SettingMenu(
                 title: "LANGUAGE",
@@ -36,6 +67,7 @@ struct OrganizerStatusHeader: View {
                 displayName: languageName,
                 recommendedValue: nil
             ) { store.updateOrganizerSetting(.language, to: $0) }
+            .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

@@ -11,22 +11,28 @@ struct PaperLibraryApp: App {
                 .environmentObject(store)
                 .frame(minWidth: 980, minHeight: 640)
                 .task {
-                    store.restoreLibraryIfPossible()
+                    store.prepareManagedLibraryIfNeeded()
                 }
         }
         .defaultSize(width: 1280, height: 780)
         .commands {
             CommandGroup(after: .newItem) {
-                Button("Choose Library…") {
-                    store.chooseLibrary()
-                }
-                .keyboardShortcut("o", modifiers: [.command, .shift])
-
                 Button("Reload Catalog") {
                     store.reload()
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .disabled(!store.hasLibrary)
+
+                Button("Set Up Automation…") {
+                    store.presentAutomationSetup()
+                }
+                .disabled(!store.hasLibrary || store.isSettingUpAutomation)
+
+                Divider()
+
+                Button("Show App Storage") {
+                    store.revealStorage()
+                }
             }
         }
     }

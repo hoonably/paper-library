@@ -112,21 +112,21 @@ struct OrganizerStatus: Equatable {
         if let updatedAt {
             lines.append("Last status update: \(updatedAt)")
         }
-        lines.append("This status is read from the selected Paper Library folder, so it can come from another computer.")
+        lines.append("This status is read from Paper Library's app storage.")
         return lines.joined(separator: "\n")
     }
 }
 
 enum OrganizerStatusFile {
-    private static let settingsPath = ".catalog/organizer-settings.json"
-    private static let runtimePath = ".catalog/runtime-status.js"
+    private static let settingsPath = "Catalog/organizer-settings.json"
+    private static let runtimePath = "Catalog/runtime-status.json"
     private static let staleAfter: TimeInterval = 120
 
     static func read(from root: URL, now: Date = Date()) -> OrganizerStatus {
         let settings: OrganizerSettingsDocument? = decodeJSON(
             at: root.appendingPathComponent(settingsPath)
         )
-        let runtime: RuntimeStatusDocument? = decodeRuntimeJavaScript(
+        let runtime: RuntimeStatusDocument? = decodeJSON(
             at: root.appendingPathComponent(runtimePath)
         )
 
@@ -148,7 +148,7 @@ enum OrganizerStatusFile {
         } else if runtime == nil {
             connectionError = "No watcher status has been received from the automation device yet."
         } else {
-            connectionError = "No recent heartbeat was received. If the library folder was moved or renamed, reinstall the watcher from its new location."
+            connectionError = "No recent heartbeat was received. Run automation setup again if the watcher is no longer active."
         }
 
         return OrganizerStatus(
@@ -174,7 +174,7 @@ enum OrganizerStatusFile {
         let url = root.appendingPathComponent(settingsPath)
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw CocoaError(.fileNoSuchFile, userInfo: [
-                NSLocalizedDescriptionKey: "The library does not contain \(settingsPath). Run Paper Library setup in this folder first.",
+                NSLocalizedDescriptionKey: "Paper Library automation has not been set up yet.",
             ])
         }
         let data = try Data(contentsOf: url)
@@ -201,17 +201,5 @@ enum OrganizerStatusFile {
     private static func decodeJSON<T: Decodable>(at url: URL) -> T? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
-    }
-
-    private static func decodeRuntimeJavaScript(at url: URL) -> RuntimeStatusDocument? {
-        guard let text = try? String(contentsOf: url, encoding: .utf8),
-              let start = text.firstIndex(of: "{"),
-              let end = text.lastIndex(of: "}"),
-              start <= end
-        else { return nil }
-        return try? JSONDecoder().decode(
-            RuntimeStatusDocument.self,
-            from: Data(text[start...end].utf8)
-        )
     }
 }

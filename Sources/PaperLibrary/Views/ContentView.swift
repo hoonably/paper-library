@@ -158,7 +158,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if !store.hasLibrary {
-                welcomeView
+                storageUnavailableView
             } else {
                 libraryView
             }
@@ -170,6 +170,10 @@ struct ContentView: View {
             Button("OK") { store.errorMessage = nil }
         } message: {
             Text(store.errorMessage ?? "")
+        }
+        .sheet(isPresented: $store.isShowingAutomationSetup) {
+            AutomationSetupView()
+                .environmentObject(store)
         }
         .overlay(alignment: .bottom) {
             if let notice = store.noticeMessage {
@@ -207,17 +211,11 @@ struct ContentView: View {
         }
     }
 
-    private var welcomeView: some View {
+    private var storageUnavailableView: some View {
         ContentUnavailableView {
             Label("Paper Library", systemImage: "books.vertical.fill")
         } description: {
-            Text("Choose your paper-library folder to browse and edit its catalog in a native Mac app.")
-        } actions: {
-            Button("Choose Library…") {
-                store.chooseLibrary()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            Text("The app could not prepare its private library storage.")
         }
     }
 
@@ -483,21 +481,6 @@ struct ContentView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text(store.libraryName)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                Button("Change Library…") {
-                    store.chooseLibrary()
-                }
-                .font(.caption)
-                .buttonStyle(.link)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(.bar)
-        }
         .onChange(of: selectedCategory) { _, _ in
             selectedFile = filteredPapers.first?.file
         }
@@ -524,7 +507,15 @@ struct ContentView: View {
             .background(.bar)
 
             if filteredPapers.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                if store.papers.isEmpty, !hasActiveFilters {
+                    ContentUnavailableView(
+                        "No Papers Yet",
+                        systemImage: "doc.badge.plus",
+                        description: Text("In Finder, right-click a PDF and choose Services → Move to Paper Library.")
+                    )
+                } else {
+                    ContentUnavailableView.search(text: searchText)
+                }
             } else {
                 List(filteredPapers, selection: listSelection) { paper in
                     PaperRowView(paper: paper)

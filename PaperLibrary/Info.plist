@@ -50,14 +50,12 @@
 			<string>Paper Library</string>
 			<key>NSRequiredContext</key>
 			<dict/>
-			<key>NSRestricted</key>
-			<true/>
 			<key>NSSendFileTypes</key>
 			<array>
 				<string>com.adobe.pdf</string>
 			</array>
 			<key>NSServiceDescription</key>
-			<string>Move selected PDFs into the Paper Library inbox for automatic organization.</string>
+			<string>Move selected PDFs into Paper Library's private waiting queue for automatic organization.</string>
 			<key>NSTimeout</key>
 			<string>60000</string>
 		</dict>

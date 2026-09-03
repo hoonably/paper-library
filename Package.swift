@@ -13,7 +13,8 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "PaperLibrary",
-            path: "Sources/PaperLibrary"
+            path: "Sources/PaperLibrary",
+            exclude: ["Resources"]
         ),
     ],
     swiftLanguageModes: [.v5]

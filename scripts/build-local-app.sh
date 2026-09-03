@@ -20,26 +20,28 @@ mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources"
 
 cp ".build/release/PaperLibrary" "$staged_app/Contents/MacOS/PaperLibrary"
 cp "PaperLibrary/Info.plist" "$staged_app/Contents/Info.plist"
+ditto "Sources/PaperLibrary/Resources/LibrarySeed" "$staged_app/Contents/Resources/LibrarySeed"
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable PaperLibrary" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${BUNDLE_ID:-com.hoonably.PaperLibrary}" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName Paper Library" "$staged_app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION:-0.1.0}" "$staged_app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-1}" "$staged_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION:-0.2.0}" "$staged_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-2}" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion 14.0" "$staged_app/Contents/Info.plist"
 
 iconset="$temporary_directory/AppIcon.iconset"
+icon_source="PaperLibrary/Assets.xcassets/AppIcon.appiconset/icon_1024x1024.png"
 mkdir -p "$iconset"
-sips -z 16 16 ".catalog/paper-library-icon.png" --out "$iconset/icon_16x16.png" >/dev/null
-sips -z 32 32 ".catalog/paper-library-icon.png" --out "$iconset/icon_16x16@2x.png" >/dev/null
-sips -z 32 32 ".catalog/paper-library-icon.png" --out "$iconset/icon_32x32.png" >/dev/null
-sips -z 64 64 ".catalog/paper-library-icon.png" --out "$iconset/icon_32x32@2x.png" >/dev/null
-sips -z 128 128 ".catalog/paper-library-icon.png" --out "$iconset/icon_128x128.png" >/dev/null
-sips -z 256 256 ".catalog/paper-library-icon.png" --out "$iconset/icon_128x128@2x.png" >/dev/null
-sips -z 256 256 ".catalog/paper-library-icon.png" --out "$iconset/icon_256x256.png" >/dev/null
-sips -z 512 512 ".catalog/paper-library-icon.png" --out "$iconset/icon_256x256@2x.png" >/dev/null
-sips -z 512 512 ".catalog/paper-library-icon.png" --out "$iconset/icon_512x512.png" >/dev/null
-sips -z 1024 1024 ".catalog/paper-library-icon.png" --out "$iconset/icon_512x512@2x.png" >/dev/null
+sips -z 16 16 "$icon_source" --out "$iconset/icon_16x16.png" >/dev/null
+sips -z 32 32 "$icon_source" --out "$iconset/icon_16x16@2x.png" >/dev/null
+sips -z 32 32 "$icon_source" --out "$iconset/icon_32x32.png" >/dev/null
+sips -z 64 64 "$icon_source" --out "$iconset/icon_32x32@2x.png" >/dev/null
+sips -z 128 128 "$icon_source" --out "$iconset/icon_128x128.png" >/dev/null
+sips -z 256 256 "$icon_source" --out "$iconset/icon_128x128@2x.png" >/dev/null
+sips -z 256 256 "$icon_source" --out "$iconset/icon_256x256.png" >/dev/null
+sips -z 512 512 "$icon_source" --out "$iconset/icon_256x256@2x.png" >/dev/null
+sips -z 512 512 "$icon_source" --out "$iconset/icon_512x512.png" >/dev/null
+sips -z 1024 1024 "$icon_source" --out "$iconset/icon_512x512@2x.png" >/dev/null
 iconutil -c icns "$iconset" -o "$staged_app/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$staged_app/Contents/Info.plist"

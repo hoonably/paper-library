@@ -16,9 +16,14 @@ struct PDFMoveResult: Equatable {
 }
 
 enum IncomingPDFMover {
-    static func move(_ sourceURLs: [URL], to libraryURL: URL) -> PDFMoveResult {
+    static func move(
+        _ sourceURLs: [URL],
+        to waitingDirectoryURL: URL,
+        excluding libraryRootURL: URL
+    ) -> PDFMoveResult {
         let fileManager = FileManager.default
-        let root = libraryURL.standardizedFileURL
+        let waitingDirectory = waitingDirectoryURL.standardizedFileURL
+        let libraryRoot = libraryRootURL.standardizedFileURL
         var moved: [URL] = []
         var failures: [PDFMoveFailure] = []
 
@@ -40,11 +45,15 @@ enum IncomingPDFMover {
                 guard values.isRegularFile == true, values.isSymbolicLink != true else {
                     throw MoveError.notRegularFile
                 }
-                guard source != root, !source.path.hasPrefix(root.path + "/") else {
+                guard source != libraryRoot,
+                      !source.path.hasPrefix(libraryRoot.path + "/") else {
                     throw MoveError.alreadyInLibrary
                 }
 
-                let destination = root.appendingPathComponent(source.lastPathComponent, isDirectory: false)
+                let destination = waitingDirectory.appendingPathComponent(
+                    source.lastPathComponent,
+                    isDirectory: false
+                )
                 guard !fileManager.fileExists(atPath: destination.path) else {
                     throw MoveError.nameConflict
                 }
@@ -79,9 +88,9 @@ private enum MoveError: LocalizedError {
         case .notRegularFile:
             "The selected item is not a regular file."
         case .alreadyInLibrary:
-            "This PDF is already inside the Paper Library."
+            "This PDF is already managed by Paper Library."
         case .nameConflict:
-            "A PDF with the same filename already exists in the Paper Library inbox."
+            "A PDF with the same filename is already waiting to be processed."
         }
     }
 }

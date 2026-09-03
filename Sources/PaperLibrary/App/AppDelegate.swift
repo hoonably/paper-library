@@ -8,10 +8,21 @@ extension Notification.Name {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let titlebarAccessoryID = NSUserInterfaceItemIdentifier("PaperLibraryFixedTitlebarControls")
     private weak var mainWindow: NSWindow?
+    private var launchedForBackgroundAction = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let isDefaultLaunch = (notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? NSNumber)?.boolValue
+        launchedForBackgroundAction = isDefaultLaunch == false
+        if launchedForBackgroundAction {
+            NSApp.setActivationPolicy(.accessory)
+            hideWindowsForBackgroundAction()
+        }
+
         let store = LibraryStore.shared
-        store.restoreLibraryIfPossible()
+        store.prepareManagedLibraryIfNeeded()
+        if !launchedForBackgroundAction {
+            store.presentAutomationSetupIfNeeded()
+        }
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
         NotificationCenter.default.addObserver(
@@ -21,13 +32,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
         DispatchQueue.main.async { [weak self] in
-            NSApp.windows.forEach { self?.configureTitleBar(of: $0) }
+            guard let self else { return }
+            if self.launchedForBackgroundAction {
+                self.hideWindowsForBackgroundAction()
+            } else {
+                NSApp.windows.forEach { self.configureTitleBar(of: $0) }
+            }
         }
     }
 
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
+        if launchedForBackgroundAction {
+            window.orderOut(nil)
+            return
+        }
         configureTitleBar(of: window)
+    }
+
+    private func hideWindowsForBackgroundAction() {
+        NSApp.windows.forEach { $0.orderOut(nil) }
+    }
+
+    private func finishBackgroundAction(if needed: Bool) {
+        guard needed else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            NSApp.terminate(nil)
+        }
     }
 
     private func configureTitleBar(of window: NSWindow) {
@@ -94,6 +125,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         userData: String?,
         error errorPointer: AutoreleasingUnsafeMutablePointer<NSString?>
     ) {
+        let hasVisibleWindow = NSApp.windows.contains { $0.isVisible }
+        let shouldTerminateAfterService = launchedForBackgroundAction || !hasVisibleWindow
+        if shouldTerminateAfterService {
+            launchedForBackgroundAction = true
+            NSApp.setActivationPolicy(.accessory)
+            hideWindowsForBackgroundAction()
+        }
+        defer { finishBackgroundAction(if: shouldTerminateAfterService) }
+
         let options: [NSPasteboard.ReadingOptionKey: Any] = [
             .urlReadingFileURLsOnly: true,
         ]
@@ -105,14 +145,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let store = LibraryStore.shared
-        if !store.hasLibrary {
-            NSRunningApplication.current.activate()
-            if !store.chooseLibrary() {
-                errorPointer.pointee = "Choose the Paper Library folder before moving PDFs." as NSString
-                return
-            }
-        }
-
         let result = store.moveIncomingPDFs(urls)
         if !result.failures.isEmpty {
             errorPointer.pointee = result.failureSummary as NSString

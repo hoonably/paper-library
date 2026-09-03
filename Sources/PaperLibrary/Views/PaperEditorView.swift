@@ -145,7 +145,7 @@ struct PaperEditorView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes the CSV and HTML entries. The PDF remains recoverable from the Trash.")
+            Text("This removes the catalog entry. The PDF remains recoverable from the Trash.")
         }
     }
 

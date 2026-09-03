@@ -1,8 +1,8 @@
 # Distributing Paper Library for macOS
 
-The app is a native SwiftUI macOS application with an App Sandbox entitlement. It asks the user to choose a library folder, then stores a security-scoped bookmark so the folder can be reopened on later launches.
+The app is a native SwiftUI macOS application. It creates and manages its own data under `~/Library/Application Support/Paper Library`; users do not choose or download a library folder.
 
-The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service moves selected PDFs into the library root; it does not copy or overwrite them, and it refuses to move PDFs already stored inside the library.
+The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them.
 
 ## Requirements
 
@@ -11,7 +11,7 @@ The app also advertises a PDF-only macOS Service named **Move to Paper Library**
 
 ## Free, unnotarized build
 
-Open `PaperLibrary.xcodeproj`, select the `PaperLibrary` scheme, choose **My Mac**, and run. On first launch, choose the folder containing `.catalog/papers.csv`.
+Open `PaperLibrary.xcodeproj`, select the `PaperLibrary` scheme, choose **My Mac**, and run. On first launch, confirm the app creates `Waiting`, `Papers`, `Catalog`, and `Automation` in its Application Support directory.
 
 Without full Xcode or a paid Apple Developer membership, build and package an ad-hoc signed Apple Silicon app with:
 
@@ -42,7 +42,7 @@ This build can be attached to a GitHub Release, but it is not checked or notariz
    xcrun stapler staple '/path/to/Paper Library.app'
    ```
 
-6. Run the repository's release verifier. It rejects ad-hoc or Apple Development signatures, missing sandbox capabilities, unstapled apps, non-universal executables, unresolved version fields, and accidentally packaged private catalog data:
+6. Run the repository's release verifier. It rejects ad-hoc or Apple Development signatures, missing bundled automation resources, unstapled apps, non-universal executables, unresolved version fields, and accidentally packaged private catalog data:
 
    ```sh
    scripts/verify-release-app.sh '/path/to/Paper Library.app'
@@ -57,15 +57,15 @@ This build can be attached to a GitHub Release, but it is not checked or notariz
 
 The Developer ID workflow below avoids the security override and remains the preferred option for wider distribution.
 
-Keep App Sandbox, User Selected File (Read/Write), and App-Scoped Bookmarks enabled. Removing those capabilities breaks persistent access to libraries outside the app container.
+Do not enable App Sandbox for this architecture. The background organizer and the app intentionally share the Application Support library.
 
 ## Release checks
 
 - Run `swift build`.
 - Run `scripts/run-core-checks.sh`.
-- Test choosing a fresh library, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
-- Confirm the header shows the automation device and runtime phase from the selected library, then change model/reasoning/language and verify `.catalog/organizer-settings.json` updates without losing `automationDevice`.
-- From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears while the PDF appears at the library root for organizer processing.
+- Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
+- Confirm **Set Up Automation** installs the watcher and the header updates, then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
+- From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, and the PDF appears in `Waiting`.
 - Verify the exported app with `codesign --verify --deep --strict --verbose=2`.
 - Verify the executable contains both `arm64` and `x86_64` architectures.
 - Run `scripts/verify-release-app.sh` and upload only the ZIP made from that verified app.

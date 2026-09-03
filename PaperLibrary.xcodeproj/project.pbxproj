@@ -10,7 +10,6 @@
 		A10000000000000000000001 /* PaperLibraryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* PaperLibraryApp.swift */; };
 		A10000000000000000000002 /* Paper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* Paper.swift */; };
 		A10000000000000000000003 /* CSVCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* CSVCodec.swift */; };
-		A10000000000000000000004 /* HTMLCatalogUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* HTMLCatalogUpdater.swift */; };
 		A10000000000000000000005 /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* LibraryStore.swift */; };
 		A10000000000000000000006 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* ContentView.swift */; };
 		A10000000000000000000007 /* PaperRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* PaperRowView.swift */; };
@@ -21,13 +20,15 @@
 		A10000000000000000000012 /* IncomingPDFMover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* IncomingPDFMover.swift */; };
 		A10000000000000000000013 /* OrganizerStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* OrganizerStatus.swift */; };
 		A10000000000000000000014 /* OrganizerStatusHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* OrganizerStatusHeader.swift */; };
+		A10000000000000000000015 /* LibrarySeed in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* LibrarySeed */; };
+		A10000000000000000000016 /* LibraryLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* LibraryLayout.swift */; };
+		A10000000000000000000018 /* AutomationSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* AutomationSetupView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* PaperLibraryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/PaperLibraryApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* Paper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/Paper.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* CSVCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CSVCodec.swift; sourceTree = "<group>"; };
-		A20000000000000000000004 /* HTMLCatalogUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/HTMLCatalogUpdater.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LibraryStore.swift; sourceTree = "<group>"; };
 		A20000000000000000000006 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ContentView.swift; sourceTree = "<group>"; };
 		A20000000000000000000007 /* PaperRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/PaperRowView.swift; sourceTree = "<group>"; };
@@ -41,6 +42,9 @@
 		A20000000000000000000015 /* IncomingPDFMover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/IncomingPDFMover.swift; sourceTree = "<group>"; };
 		A20000000000000000000016 /* OrganizerStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/OrganizerStatus.swift; sourceTree = "<group>"; };
 		A20000000000000000000017 /* OrganizerStatusHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/OrganizerStatusHeader.swift; sourceTree = "<group>"; };
+		A20000000000000000000018 /* LibrarySeed */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/LibrarySeed; sourceTree = "<group>"; };
+		A20000000000000000000019 /* LibraryLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LibraryLayout.swift; sourceTree = "<group>"; };
+		A20000000000000000000021 /* AutomationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AutomationSetupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,14 +75,16 @@
 				A20000000000000000000002 /* Paper.swift */,
 				A20000000000000000000016 /* OrganizerStatus.swift */,
 				A20000000000000000000003 /* CSVCodec.swift */,
-				A20000000000000000000004 /* HTMLCatalogUpdater.swift */,
 				A20000000000000000000015 /* IncomingPDFMover.swift */,
+				A20000000000000000000019 /* LibraryLayout.swift */,
 				A20000000000000000000005 /* LibraryStore.swift */,
 				A20000000000000000000006 /* ContentView.swift */,
 				A20000000000000000000017 /* OrganizerStatusHeader.swift */,
+				A20000000000000000000021 /* AutomationSetupView.swift */,
 				A20000000000000000000007 /* PaperRowView.swift */,
 				A20000000000000000000008 /* PaperDetailView.swift */,
 				A20000000000000000000009 /* PaperEditorView.swift */,
+				A20000000000000000000018 /* LibrarySeed */,
 			);
 			path = Sources/PaperLibrary;
 			sourceTree = "<group>";
@@ -160,6 +166,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000010 /* Assets.xcassets in Resources */,
+				A10000000000000000000015 /* LibrarySeed in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,11 +182,12 @@
 				A10000000000000000000002 /* Paper.swift in Sources */,
 				A10000000000000000000013 /* OrganizerStatus.swift in Sources */,
 				A10000000000000000000003 /* CSVCodec.swift in Sources */,
-				A10000000000000000000004 /* HTMLCatalogUpdater.swift in Sources */,
 				A10000000000000000000012 /* IncomingPDFMover.swift in Sources */,
+				A10000000000000000000016 /* LibraryLayout.swift in Sources */,
 				A10000000000000000000005 /* LibraryStore.swift in Sources */,
 				A10000000000000000000006 /* ContentView.swift in Sources */,
 				A10000000000000000000014 /* OrganizerStatusHeader.swift in Sources */,
+				A10000000000000000000018 /* AutomationSetupView.swift in Sources */,
 				A10000000000000000000007 /* PaperRowView.swift in Sources */,
 				A10000000000000000000008 /* PaperDetailView.swift in Sources */,
 				A10000000000000000000009 /* PaperEditorView.swift in Sources */,
@@ -299,8 +307,8 @@
 				CODE_SIGN_ENTITLEMENTS = PaperLibrary/PaperLibrary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				CURRENT_PROJECT_VERSION = 2;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PaperLibrary/Info.plist;
@@ -308,7 +316,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoonably.PaperLibrary;
 				PRODUCT_NAME = "Paper Library";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -324,8 +332,8 @@
 				CODE_SIGN_ENTITLEMENTS = PaperLibrary/PaperLibrary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				CURRENT_PROJECT_VERSION = 2;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PaperLibrary/Info.plist;
@@ -333,7 +341,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoonably.PaperLibrary;
 				PRODUCT_NAME = "Paper Library";
 				SWIFT_EMIT_LOC_STRINGS = YES;

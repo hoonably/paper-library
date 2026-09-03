@@ -50,7 +50,7 @@ struct Paper: Identifiable, Codable, Hashable {
 
         let components = file.split(separator: "/", omittingEmptySubsequences: false)
         return [3, 4].contains(components.count) &&
-            components.first == "paper" &&
+            components.first.map(String.init) == LibraryLayout.papersDirectoryName &&
             components.allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." }
     }
 
@@ -59,7 +59,7 @@ struct Paper: Identifiable, Codable, Hashable {
 
         let root = libraryURL.standardizedFileURL
         let candidate = root.appendingPathComponent(file).standardizedFileURL
-        let papersRoot = root.appendingPathComponent("paper", isDirectory: true).standardizedFileURL
+        let papersRoot = LibraryLayout.papersURL(in: root).standardizedFileURL
         guard candidate.path.hasPrefix(papersRoot.path + "/") else { return nil }
         return candidate
     }
@@ -75,7 +75,7 @@ struct Paper: Identifiable, Codable, Hashable {
             return "\(missing.0) is required."
         }
         guard hasValidCatalogFilePath else {
-            return "PDF path must use paper/Field/Title.pdf or paper/Field/Subfolder/Title.pdf."
+            return "PDF path must use Papers/Field/Title.pdf or Papers/Field/Subfolder/Title.pdf."
         }
         guard year.range(of: #"^\d{4}$"#, options: .regularExpression) != nil else {
             return "Year must contain four digits."
