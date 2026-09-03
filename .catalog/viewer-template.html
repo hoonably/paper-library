@@ -1,0 +1,1874 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" type="image/png" href=".catalog/favicon.png">
+  <link rel="apple-touch-icon" href=".catalog/paper-library-icon.png">
+  <script>
+    if (location.protocol === "file:") {
+      const localViewerUrl = "__PAPER_VIEWER_URL__";
+      const healthCheck = new Image();
+      healthCheck.onload = () => location.replace(localViewerUrl);
+      healthCheck.src = localViewerUrl.replace(
+        "/papers.html",
+        `/.paper-organizer-health.gif?${Date.now()}`
+      );
+    }
+  </script>
+  <title>Paper Library</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --surface: rgba(255, 255, 255, 0.84);
+      --surface-strong: #fffdf8;
+      --text: #1f2926;
+      --muted: #68736f;
+      --affiliation: #7b7770;
+      --line: rgba(31, 41, 38, 0.12);
+      --accent: #0b6b57;
+      --accent-soft: #dceee8;
+      --oral: #b84235;
+      --oral-soft: #f7ddd8;
+      --spotlight: #8a6300;
+      --spotlight-soft: #fff0b8;
+      --unspecified: #68736f;
+      --unspecified-soft: #e4e7e5;
+      --warm: #c86938;
+      --shadow: 0 18px 50px rgba(32, 43, 39, 0.09);
+      --radius: 16px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111816;
+        --surface: rgba(28, 38, 35, 0.88);
+        --surface-strong: #1c2623;
+        --text: #edf4f0;
+        --muted: #9faeaa;
+        --affiliation: #87938f;
+        --line: rgba(231, 241, 236, 0.12);
+        --accent: #74d4b8;
+        --accent-soft: #193f35;
+        --oral: #ff9a8e;
+        --oral-soft: #4a241f;
+        --spotlight: #ffd66d;
+        --spotlight-soft: #4b3d15;
+        --unspecified: #a8b0ad;
+        --unspecified-soft: #2d3532;
+        --warm: #e59668;
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 7% 5%, rgba(200, 105, 56, 0.16), transparent 31rem),
+        radial-gradient(circle at 94% 15%, rgba(11, 107, 87, 0.16), transparent 35rem),
+        var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .shell {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 52px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 760px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(36px, 4.5vw, 54px);
+      font-weight: 500;
+      letter-spacing: -0.045em;
+      line-height: 1;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .runtime-panel {
+      display: flex;
+      gap: 10px 12px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      padding-bottom: 3px;
+    }
+
+    .runtime-state,
+    .runtime-settings,
+    .runtime-setting {
+      display: flex;
+      align-items: center;
+    }
+
+    .runtime-state { min-width: 0; gap: 9px; }
+
+    .runtime-dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #8a8a84;
+      box-shadow: 0 0 0 4px color-mix(in srgb, #8a8a84 16%, transparent);
+    }
+
+    .runtime-panel[data-phase="idle"] .runtime-dot { background: #4e9a69; box-shadow: 0 0 0 4px color-mix(in srgb, #4e9a69 16%, transparent); }
+    .runtime-panel[data-phase="processing"] .runtime-dot,
+    .runtime-panel[data-phase="checking"] .runtime-dot { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+    .runtime-panel[data-phase="queued"] .runtime-dot { background: #d89a42; box-shadow: 0 0 0 4px color-mix(in srgb, #d89a42 18%, transparent); }
+    .runtime-panel[data-phase="remote"] .runtime-dot { background: #6d82bd; box-shadow: 0 0 0 4px color-mix(in srgb, #6d82bd 18%, transparent); }
+    .runtime-panel[data-phase="error"] .runtime-dot,
+    .runtime-panel[data-phase="offline"] .runtime-dot { background: #c9594f; box-shadow: 0 0 0 4px color-mix(in srgb, #c9594f 18%, transparent); }
+
+    .runtime-machine { color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+    .runtime-settings {
+      flex: 0 1 auto;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .runtime-setting {
+      gap: 6px;
+      min-height: 31px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--surface-strong);
+    }
+
+    .runtime-setting span {
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+    }
+
+    .runtime-setting select {
+      max-width: 154px;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font-size: 10px;
+      font-weight: 750;
+    }
+
+    .runtime-settings[aria-busy="true"] { opacity: 0.65; }
+
+    .runtime-details {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .runtime-details[hidden],
+    .runtime-lanes[hidden],
+    .runtime-lane[hidden] { display: none; }
+
+    .runtime-lanes {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .runtime-lane {
+      min-width: 0;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-strong);
+    }
+
+    .runtime-lane-title {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .runtime-files {
+      display: flex;
+      min-height: 18px;
+      gap: 5px;
+      overflow: hidden;
+      align-items: center;
+      color: var(--text);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .runtime-file {
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .runtime-count { flex: 0 0 auto; color: var(--accent); font-weight: 800; }
+    .runtime-error { color: #c9594f; font-size: 11px; }
+    .runtime-error[hidden] { display: none; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(100px, 1fr)) 40px minmax(154px, 1.25fr);
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    #search { grid-column: 1 / -1; }
+
+    .field {
+      width: 100%;
+      min-height: 40px;
+      padding: 0 12px;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      outline: none;
+      background: var(--surface-strong);
+      font-size: 13px;
+    }
+
+    .field:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+
+    .sort-control {
+      position: relative;
+      min-width: 0;
+      padding-left: 9px;
+      border-left: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
+    }
+
+    .sort-control::before {
+      position: absolute;
+      z-index: 1;
+      top: 50%;
+      left: 20px;
+      color: var(--accent);
+      content: "↕";
+      font-size: 14px;
+      font-weight: 800;
+      pointer-events: none;
+      transform: translateY(-52%);
+    }
+
+    .sort-field {
+      padding-left: 33px;
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface-strong));
+      font-weight: 720;
+    }
+
+    .filter-reset {
+      display: grid;
+      width: 40px;
+      min-height: 40px;
+      padding: 0;
+      place-items: center;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      outline: none;
+      background: var(--surface-strong);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .filter-reset:hover,
+    .filter-reset:focus-visible {
+      color: var(--surface-strong);
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .result-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 18px 2px 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .papers {
+      display: grid;
+      gap: 8px;
+    }
+
+    .paper {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .paper summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 112px 92px 52px 86px auto;
+      gap: 10px;
+      align-items: center;
+      padding: 15px 18px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .paper summary::-webkit-details-marker { display: none; }
+
+    .paper-lead { min-width: 0; }
+
+    .paper-title {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(16px, 1.55vw, 19px);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.22;
+    }
+
+    .paper-authors,
+    .paper-affiliation {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .paper-authors {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .paper-affiliation {
+      margin-top: 2px;
+      color: var(--affiliation);
+      font-size: 11px;
+      line-height: 1.35;
+      opacity: 0.82;
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.4;
+    }
+
+    .subcategory-value {
+      display: block;
+      overflow: hidden;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .presentation-badge {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      padding: 0 8px;
+      color: var(--accent);
+      border-radius: 999px;
+      background: var(--accent-soft);
+      font-size: 10px;
+      font-weight: 750;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .presentation-badge[data-presentation="oral"] {
+      color: var(--oral);
+      background: var(--oral-soft);
+    }
+
+    .presentation-badge[data-presentation="spotlight"] {
+      color: var(--spotlight);
+      background: var(--spotlight-soft);
+    }
+
+    .presentation-badge[data-presentation="preprint"] {
+      color: var(--unspecified);
+      background: var(--unspecified-soft);
+    }
+
+    .paper-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
+    }
+
+    .paper-tool {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 9px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      font-size: 10px;
+      font-weight: 750;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .paper-tool:hover,
+    .paper-tool:focus-visible {
+      color: var(--surface-strong);
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .edit-button,
+    .close-button {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      place-items: center;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .edit-button {
+      width: 28px;
+      height: 28px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .edit-button:hover,
+    .close-button:hover {
+      color: var(--surface-strong);
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .paper-body {
+      padding: 0 18px 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .summary {
+      padding-top: 16px;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .summary-novelty {
+      display: block;
+      margin-top: 5px;
+      color: var(--accent);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .empty {
+      padding: 64px 24px;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      text-align: center;
+    }
+
+    .edit-dialog {
+      width: min(760px, calc(100% - 24px));
+      max-height: calc(100vh - 32px);
+      padding: 0;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--surface-strong);
+      box-shadow: 0 28px 90px rgba(16, 28, 24, 0.28);
+    }
+
+    .edit-dialog::backdrop,
+    .language-dialog::backdrop {
+      background: rgba(12, 20, 17, 0.48);
+      backdrop-filter: blur(7px);
+    }
+
+    .language-dialog {
+      width: min(430px, calc(100% - 24px));
+      padding: 24px;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--surface-strong);
+      box-shadow: 0 28px 90px rgba(16, 28, 24, 0.28);
+    }
+
+    .language-dialog h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .language-dialog p {
+      margin: 10px 0 20px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .language-dialog .dialog-actions { justify-content: flex-end; margin-top: 0; }
+
+    .dialog-head {
+      position: sticky;
+      z-index: 2;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-strong);
+    }
+
+    .dialog-head h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 27px;
+      font-weight: 500;
+      letter-spacing: -0.025em;
+    }
+
+    .dialog-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .editor-form { padding: 22px 24px 24px; }
+
+    .editor-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .editor-field {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .editor-field.full { grid-column: 1 / -1; }
+
+    .editor-input {
+      width: 100%;
+      min-height: 43px;
+      padding: 10px 12px;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      outline: none;
+      background: var(--bg);
+      font-size: 14px;
+      font-weight: 450;
+    }
+
+    textarea.editor-input {
+      min-height: 76px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .editor-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+
+    .dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 9px;
+      margin-top: 22px;
+    }
+
+    .dialog-actions-main {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+    }
+
+    .dialog-button {
+      min-height: 42px;
+      padding: 0 17px;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .dialog-button.primary {
+      color: var(--surface-strong);
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+
+    .dialog-button.danger {
+      color: #a63232;
+      border-color: color-mix(in srgb, #a63232 42%, var(--line));
+    }
+
+    .dialog-button.danger:hover,
+    .dialog-button.danger:focus-visible {
+      color: var(--surface-strong);
+      border-color: #a63232;
+      background: #a63232;
+    }
+
+    .dialog-button:disabled {
+      cursor: wait;
+      opacity: 0.58;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      right: 24px;
+      bottom: 24px;
+      max-width: min(420px, calc(100% - 48px));
+      padding: 13px 16px;
+      color: var(--surface-strong);
+      border-radius: 13px;
+      background: var(--accent);
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast[data-kind="error"] { background: #a43f36; }
+
+    @media (max-width: 1040px) {
+      .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .sort-control { padding-left: 0; border-left: 0; }
+      .sort-control::before { left: 11px; }
+    }
+
+    @media (max-width: 780px) {
+      .shell { width: min(100% - 24px, 680px); padding-top: 24px; }
+      .hero { grid-template-columns: 1fr; gap: 12px; }
+      .runtime-panel { justify-content: flex-start; }
+      .runtime-settings { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+      .controls { grid-template-columns: 1fr; }
+      #search { grid-column: 1; }
+      .paper summary { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 14px; }
+      .paper summary > .paper-meta { display: none; }
+      .editor-grid { grid-template-columns: 1fr; }
+      .editor-field.full { grid-column: auto; }
+    }
+
+    @media (max-width: 520px) {
+      .paper summary { grid-template-columns: 1fr; }
+      .paper-tools { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <h1>Paper Library</h1>
+        <p class="subtitle">A personal research catalog for quickly exploring saved papers by field, venue, and key idea.</p>
+      </div>
+      <section class="runtime-panel" id="runtimePanel" data-phase="starting" aria-label="Paper Organizer status and settings">
+        <div class="runtime-state" id="runtimeState">
+          <span class="runtime-dot" aria-hidden="true"></span>
+          <strong class="runtime-machine" id="runtimeMachine">Checking automation device</strong>
+        </div>
+        <div class="runtime-settings" id="runtimeSettings" aria-label="Paper Organizer model settings">
+          <label class="runtime-setting">
+            <span>MODEL</span>
+            <select id="runtimeModelSetting">
+              <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+              <option value="gpt-5.6-terra" selected>GPT-5.6 Terra ★</option>
+              <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+            </select>
+          </label>
+          <label class="runtime-setting">
+            <span>REASONING</span>
+            <select id="runtimeReasoningSetting">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium ★</option>
+              <option value="high">High</option>
+              <option value="xhigh">XHigh</option>
+            </select>
+          </label>
+          <label class="runtime-setting">
+            <span>LANGUAGE</span>
+            <select id="runtimeLanguageSetting">
+              <option value="english" selected>English</option>
+              <option value="korean">Korean</option>
+              <option value="chinese">Chinese</option>
+            </select>
+          </label>
+        </div>
+      </section>
+    </header>
+
+    <section class="runtime-details" id="runtimeDetails" aria-label="Paper Organizer activity" hidden>
+      <div class="runtime-lanes" id="runtimeLanes" hidden>
+        <div class="runtime-lane" id="runtimeCurrentLane" hidden>
+          <span class="runtime-lane-title">Processing</span>
+          <div class="runtime-files" id="runtimeCurrent"></div>
+        </div>
+        <div class="runtime-lane" id="runtimeQueueLane" hidden>
+          <span class="runtime-lane-title">Queue</span>
+          <div class="runtime-files" id="runtimeQueue"></div>
+        </div>
+      </div>
+      <div class="runtime-error" id="runtimeError" hidden></div>
+    </section>
+
+    <section class="controls" aria-label="Paper filters">
+      <input class="field" id="search" type="search" placeholder="Search titles, authors, and key ideas">
+      <select class="field" id="category"><option value="">Field</option></select>
+      <select class="field" id="venue"><option value="">Venue</option></select>
+      <select class="field" id="year"><option value="">Year</option></select>
+      <select class="field" id="track"><option value="">Track</option></select>
+      <select class="field" id="presentation"><option value="">Presentation</option></select>
+      <button class="filter-reset" id="resetFilters" type="button" title="Reset filters" aria-label="Reset search and filters">↻</button>
+      <label class="sort-control" aria-label="Sort by">
+        <select class="field sort-field" id="sort">
+          <option value="added_at">Date Added</option>
+          <option value="title">Title</option>
+          <option value="category">Field</option>
+          <option value="venue">Venue</option>
+          <option value="year">Year</option>
+          <option value="presentation">Presentation</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="result-line">
+      <span id="resultCount"></span>
+    </div>
+    <section class="papers" id="papers"></section>
+  </main>
+
+  <dialog class="language-dialog" id="languageDialog">
+    <h2>Translate existing summaries?</h2>
+    <p id="languageDialogMessage"></p>
+    <div class="dialog-actions">
+      <button class="dialog-button" id="keepExistingLanguage" type="button">No</button>
+      <button class="dialog-button primary" id="translateExistingLanguage" type="button">Yes</button>
+    </div>
+  </dialog>
+
+  <dialog class="edit-dialog" id="editDialog">
+    <div class="dialog-head">
+      <div>
+        <h2>Edit paper details</h2>
+        <p>Changes are saved to both the CSV and this HTML file.</p>
+      </div>
+      <button class="close-button" id="closeEditor" type="button" aria-label="Close">×</button>
+    </div>
+    <form class="editor-form" id="editForm" novalidate>
+      <div class="editor-grid">
+        <label class="editor-field">
+          Category
+          <input class="editor-input" name="category" required>
+        </label>
+        <label class="editor-field">
+          Subcategory
+          <input class="editor-input" name="subcategory" placeholder="Leave blank when there is no subfolder">
+        </label>
+        <label class="editor-field">
+          Venue
+          <input class="editor-input" name="venue" required>
+        </label>
+        <label class="editor-field">
+          Year
+          <input class="editor-input" name="year" inputmode="numeric" pattern="[0-9]{4}" required>
+        </label>
+        <label class="editor-field">
+          Track
+          <input class="editor-input" name="track" list="trackSuggestions" placeholder="Leave blank for a Preprint or Technical Report">
+        </label>
+        <label class="editor-field full">
+          Workshop name
+          <input class="editor-input" name="workshop" placeholder="Leave blank for Main">
+        </label>
+        <label class="editor-field">
+          Presentation
+          <input class="editor-input" name="presentation" list="presentationSuggestions" required>
+        </label>
+        <label class="editor-field full">
+          Title
+          <input class="editor-input" name="title" required>
+        </label>
+        <label class="editor-field full">
+          Authors
+          <textarea class="editor-input" name="authors" required></textarea>
+        </label>
+        <label class="editor-field full">
+          Affiliation
+          <textarea class="editor-input" name="affiliation" required></textarea>
+        </label>
+        <label class="editor-field full">
+          One-sentence summary
+          <textarea class="editor-input" name="summary" required></textarea>
+        </label>
+        <label class="editor-field full">
+          Methodological novelty
+          <textarea class="editor-input" name="novelty" required></textarea>
+        </label>
+        <label class="editor-field full">
+          Paper site
+          <input class="editor-input" name="site" type="url" placeholder="https://...">
+        </label>
+        <label class="editor-field">
+          Date added
+          <input class="editor-input" name="added_at" placeholder="YYYY-MM-DD HH:MM:SS" required>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button class="dialog-button danger" id="deleteEditor" type="button">Delete paper</button>
+        <div class="dialog-actions-main">
+          <button class="dialog-button" id="cancelEditor" type="button">Cancel</button>
+          <button class="dialog-button primary" id="saveEditor" type="submit">Save to CSV</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="trackSuggestions">
+    <option value="Main">
+    <option value="Workshop">
+    <option value="Findings">
+    <option value="Industry">
+    <option value="Datasets &amp; Benchmarks">
+    <option value="Demo">
+  </datalist>
+  <datalist id="presentationSuggestions">
+    <option value="Preprint">
+    <option value="Oral">
+    <option value="Spotlight">
+    <option value="Poster">
+  </datalist>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    /* CATALOG_DATA_START */
+    const CATALOG = __PAPER_CATALOG_JSON__;
+    const GENERATED_AT = "__GENERATED_AT__";
+    /* CATALOG_DATA_END */
+
+    const CSV_HEADERS = [
+      "category",
+      "subcategory",
+      "venue",
+      "year",
+      "track",
+      "workshop",
+      "presentation",
+      "title",
+      "authors",
+      "affiliation",
+      "summary",
+      "novelty",
+      "site",
+      "added_at",
+      "file",
+    ];
+    const EDITABLE_HEADERS = CSV_HEADERS.filter((header) => header !== "file");
+    const OPTIONAL_HEADERS = new Set(["subcategory", "track", "workshop", "site"]);
+    const withLegacyStatus = (headers) => {
+      const copy = [...headers];
+      copy.splice(copy.indexOf("presentation") + 1, 0, "status");
+      return copy;
+    };
+    const LEGACY_CSV_HEADER_VARIANTS = [
+      withLegacyStatus(CSV_HEADERS),
+      withLegacyStatus(CSV_HEADERS.filter((header) => header !== "added_at")),
+      withLegacyStatus(CSV_HEADERS.filter((header) => !["novelty", "added_at"].includes(header))),
+      withLegacyStatus(CSV_HEADERS.filter((header) => !["subcategory", "novelty", "added_at"].includes(header))),
+    ];
+    const $ = (selector) => document.querySelector(selector);
+    const unique = (values) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    let catalog = CATALOG.map(normalizeRecord);
+    let libraryHandle = null;
+    let editingFile = "";
+    let toastTimer = null;
+    let lastRuntimeCompletion = "";
+    let runtimeSettingsDirty = false;
+    let pendingRuntimeSettings = null;
+    let runtimeSettingsVersion = 0;
+    let runtimeSettingsSaveQueue = Promise.resolve();
+    let runtimeSelectedLanguage = "english";
+    const RUNTIME_STALE_AFTER_MS = 120_000;
+
+    function normalizeRecord(record) {
+      const normalized = Object.fromEntries(
+        CSV_HEADERS.map((header) => [header, String(record[header] ?? "")])
+      );
+      if (!["Preprint", "Poster", "Spotlight", "Oral"].includes(normalized.presentation)) {
+        normalized.presentation = String(record.status).includes("Preprint") || normalized.venue === "Technical Report"
+          ? "Preprint"
+          : normalized.venue === "OSDI" ? "Oral" : "Poster";
+      }
+      return normalized;
+    }
+
+    function sortedCatalog(records, criterion) {
+      const text = (left, right) => left.localeCompare(right, undefined, { sensitivity: "base" });
+      const presentationRank = (value) => {
+        const ranks = { oral: 0, spotlight: 1, poster: 2, preprint: 3 };
+        return ranks[String(value).toLocaleLowerCase()] ?? 3;
+      };
+      const compare = {
+        added_at: (a, b) => text(b.added_at, a.added_at),
+        title: (a, b) => text(a.title, b.title),
+        category: (a, b) => text(a.category, b.category),
+        venue: (a, b) => text(a.venue, b.venue),
+        year: (a, b) => Number(b.year || 0) - Number(a.year || 0),
+        presentation: (a, b) => presentationRank(a.presentation) - presentationRank(b.presentation),
+      }[criterion] || ((a, b) => text(b.added_at, a.added_at));
+
+      return records.slice().sort((a, b) =>
+        compare(a, b) || text(a.title, b.title)
+      );
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let quoted = false;
+
+      for (let index = 0; index < text.length; index += 1) {
+        const char = text[index];
+        if (quoted) {
+          if (char === '"' && text[index + 1] === '"') {
+            field += '"';
+            index += 1;
+          } else if (char === '"') {
+            quoted = false;
+          } else {
+            field += char;
+          }
+        } else if (char === '"') {
+          quoted = true;
+        } else if (char === ",") {
+          row.push(field);
+          field = "";
+        } else if (char === "\n") {
+          row.push(field.replace(/\r$/, ""));
+          rows.push(row);
+          row = [];
+          field = "";
+        } else {
+          field += char;
+        }
+      }
+
+      if (quoted) throw new Error("The CSV contains an unclosed quote.");
+      if (field.length || row.length) {
+        row.push(field.replace(/\r$/, ""));
+        rows.push(row);
+      }
+      return rows.filter((item) => item.some((value) => value.length));
+    }
+
+    function parseCatalogCsv(text) {
+      const rows = parseCsv(text);
+      if (!rows.length) throw new Error("The CSV is empty.");
+      rows[0][0] = rows[0][0].replace(/^\uFEFF/, "");
+      const headers = rows.shift();
+      const sourceHeaders = [CSV_HEADERS, ...LEGACY_CSV_HEADER_VARIANTS].find(
+        (candidate) => headers.join(",") === candidate.join(",")
+      );
+      if (!sourceHeaders) {
+        throw new Error(`The CSV header is invalid: ${headers.join(",")}`);
+      }
+
+      const seenFiles = new Set();
+      return rows.map((values, rowIndex) => {
+        if (values.length !== sourceHeaders.length) {
+          throw new Error(`CSV row ${rowIndex + 2} has an invalid number of columns.`);
+        }
+        const record = normalizeRecord(
+          Object.fromEntries(sourceHeaders.map((header, index) => [header, values[index]]))
+        );
+        if (!record.file) throw new Error(`CSV row ${rowIndex + 2} has an empty PDF path.`);
+        if (seenFiles.has(record.file)) throw new Error(`Duplicate PDF path: ${record.file}`);
+        seenFiles.add(record.file);
+        return record;
+      });
+    }
+
+    function csvText(records) {
+      const quote = (value) =>
+        `"${String(value ?? "").replaceAll('"', '""').replace(/\r?\n/g, " ")}"`;
+      const lines = records.map((record, rowIndex) =>
+        CSV_HEADERS.map((header) => {
+          const value = String(record[header] ?? "");
+          if (header === "year") {
+            if (!/^\d{4}$/.test(value)) {
+              throw new Error(`The year in CSV row ${rowIndex + 2} must contain four digits.`);
+            }
+            return value;
+          }
+          return quote(value);
+        }).join(",")
+      );
+      return CSV_HEADERS.join(",") + "\n" + (lines.length ? lines.join("\n") + "\n" : "");
+    }
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function makeCardLink(label, href, ariaLabel) {
+      const link = el("a", "paper-tool", label);
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.title = ariaLabel;
+      link.setAttribute("aria-label", ariaLabel);
+      link.addEventListener("click", (event) => event.stopPropagation());
+      return link;
+    }
+
+    function safePdfPath(value) {
+      const parts = String(value || "").split("/");
+      return [3, 4].includes(parts.length) &&
+        parts[0] === "paper" &&
+        !/^[a-z][a-z0-9+.-]*:/i.test(value) &&
+        parts.every((part) => part && part !== "." && part !== "..") &&
+        /\.pdf$/i.test(value);
+    }
+
+    function pdfHref(value) {
+      return value.split("/").map((part) => encodeURIComponent(part)).join("/");
+    }
+
+    async function pdfParentDirectory(rootHandle, filePath) {
+      if (!safePdfPath(filePath)) {
+        throw new Error("The relative path of the PDF to delete is invalid.");
+      }
+      const parts = filePath.split("/");
+      if (parts.some((part) => !part || part === "." || part === "..")) {
+        throw new Error("The relative path of the PDF to delete is invalid.");
+      }
+      let directory = rootHandle;
+      for (const part of parts.slice(0, -1)) {
+        directory = await directory.getDirectoryHandle(part);
+      }
+      return { directory, name: parts.at(-1) };
+    }
+
+    function renderPaper(paper) {
+      const card = el("details", "paper");
+      const head = document.createElement("summary");
+      const lead = el("div", "paper-lead");
+      const authors = el("div", "paper-authors", paper.authors);
+      authors.title = paper.authors;
+      const affiliation = el("div", "paper-affiliation", paper.affiliation);
+      affiliation.title = paper.affiliation;
+      lead.append(el("h2", "paper-title", paper.title), authors, affiliation);
+
+      const category = el("div", "paper-meta");
+      category.append(el("span", "meta-label", "Category"), el("span", "meta-value", paper.category));
+      if (paper.subcategory) {
+        const subcategory = el("span", "subcategory-value", `(${paper.subcategory})`);
+        subcategory.title = paper.subcategory;
+        category.append(subcategory);
+      }
+      const venue = el("div", "paper-meta");
+      const venueText = paper.track && paper.track !== "Main"
+        ? `${paper.venue} · ${paper.track}`
+        : paper.venue;
+      venue.append(el("span", "meta-label", "Venue"), el("span", "meta-value", venueText));
+      const year = el("div", "paper-meta");
+      year.append(el("span", "meta-label", "Year"), el("span", "meta-value", paper.year));
+      const presentation = el("div", "paper-meta");
+      const presentationText = paper.presentation || "Preprint";
+      const presentationBadge = el("span", "presentation-badge", presentationText);
+      presentationBadge.dataset.presentation = presentationText.toLocaleLowerCase().replaceAll(" ", "-");
+      presentation.append(
+        el("span", "meta-label", "Presentation"),
+        presentationBadge
+      );
+      const tools = el("div", "paper-tools");
+      const editButton = el("button", "edit-button", "✎");
+      editButton.type = "button";
+      editButton.title = "Edit CSV details";
+      editButton.setAttribute("aria-label", `Edit details for ${paper.title}`);
+      editButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await openEditor(paper.file);
+      });
+      tools.append(editButton);
+      if (safePdfPath(paper.file)) {
+        tools.append(makeCardLink("PDF", pdfHref(paper.file), `Open the PDF for ${paper.title}`));
+      }
+      if (/^https?:\/\//i.test(paper.site)) {
+        tools.append(makeCardLink("Site", paper.site, `Open the paper site for ${paper.title}`));
+      }
+      head.append(
+        lead,
+        category,
+        venue,
+        year,
+        presentation,
+        tools
+      );
+
+      const body = el("div", "paper-body");
+      const summary = el("div", "summary", paper.summary);
+      summary.append(el("span", "summary-novelty", paper.novelty));
+      body.append(summary);
+      card.append(head, body);
+      return card;
+    }
+
+    function resetOptions(selector, emptyLabel, values) {
+      const select = $(selector);
+      const current = select.value;
+      select.replaceChildren(new Option(emptyLabel, ""));
+      values.forEach((value) => select.append(new Option(value, value)));
+      if (values.includes(current)) select.value = current;
+    }
+
+    function refreshCatalog() {
+      const categories = unique(catalog.map((paper) => paper.category));
+      const venues = unique(catalog.map((paper) => paper.venue));
+      const years = unique(catalog.map((paper) => String(paper.year || "")))
+        .sort((a, b) => Number(b) - Number(a));
+      const tracks = unique(catalog.map((paper) => paper.track));
+      const presentations = unique(catalog.map((paper) => paper.presentation));
+
+      resetOptions("#category", "Field", categories);
+      resetOptions("#venue", "Venue", venues);
+      resetOptions("#year", "Year", years);
+      resetOptions("#track", "Track", tracks);
+      resetOptions("#presentation", "Presentation", presentations);
+      render();
+    }
+
+    function render() {
+      const query = $("#search").value.trim().toLocaleLowerCase();
+      const category = $("#category").value;
+      const venue = $("#venue").value;
+      const year = $("#year").value;
+      const track = $("#track").value;
+      const presentation = $("#presentation").value;
+      const sort = $("#sort").value;
+      const rows = sortedCatalog(catalog, sort).filter((paper) => {
+        const haystack = Object.values(paper).join(" ").toLocaleLowerCase();
+        return (!query || haystack.includes(query)) &&
+          (!category || paper.category === category) &&
+          (!venue || paper.venue === venue) &&
+          (!year || String(paper.year) === year) &&
+          (!track || paper.track === track) &&
+          (!presentation || paper.presentation === presentation);
+      });
+
+      const container = $("#papers");
+      container.replaceChildren();
+      $("#resultCount").textContent = `${rows.length} ${rows.length === 1 ? "paper" : "papers"}`;
+      if (!rows.length) {
+        container.append(el("div", "empty", "No papers match these filters."));
+        return;
+      }
+      rows.forEach((paper) => container.append(renderPaper(paper)));
+    }
+
+    function showToast(message, kind = "success") {
+      const toast = $("#toast");
+      toast.textContent = message;
+      toast.dataset.kind = kind;
+      toast.classList.add("visible");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("visible"), 4200);
+    }
+
+    function runtimePhaseLabel(phase) {
+      return new Map([
+        ["starting", "Starting watcher"],
+        ["checking", "Checking for new PDFs"],
+        ["queued", "Waiting to process"],
+        ["processing", "Processing with Codex"],
+        ["idle", "Waiting for new PDFs"],
+        ["error", "Processing error"],
+        ["remote", "Using remote automation"],
+        ["offline", "Watcher unavailable"],
+      ]).get(phase) || "Checking status";
+    }
+
+    function runtimeTime(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderRuntimeFiles(selector, laneSelector, files) {
+      const container = $(selector);
+      const hasFiles = Boolean(files?.length);
+      $(laneSelector).hidden = !hasFiles;
+      container.replaceChildren();
+      if (!hasFiles) return false;
+      const first = el("span", "runtime-file", files[0]);
+      first.title = files.join("\n");
+      container.append(first);
+      if (files.length > 1) container.append(el("span", "runtime-count", `+${files.length - 1}`));
+      return true;
+    }
+
+    function syncRuntimeSettingControls(status) {
+      const configured = {
+        model: String(status.configuredModel || "gpt-5.6-terra"),
+        reasoning: String(status.configuredReasoning || "medium"),
+        language: String(status.configuredLanguage || "english"),
+      };
+      if (
+        pendingRuntimeSettings &&
+        pendingRuntimeSettings.model === configured.model &&
+        pendingRuntimeSettings.reasoning === configured.reasoning &&
+        pendingRuntimeSettings.language === configured.language
+      ) {
+        pendingRuntimeSettings = null;
+        runtimeSettingsDirty = false;
+      }
+      if (pendingRuntimeSettings || runtimeSettingsDirty) return;
+      $("#runtimeModelSetting").value = configured.model;
+      $("#runtimeReasoningSetting").value = configured.reasoning;
+      $("#runtimeLanguageSetting").value = configured.language;
+      runtimeSelectedLanguage = configured.language;
+    }
+
+    function renderRuntimeStatus(status) {
+      const updatedAt = Date.parse(status.updatedAt || "");
+      const stale = status.transport !== "live" &&
+        (!Number.isFinite(updatedAt) || Date.now() - updatedAt > RUNTIME_STALE_AFTER_MS);
+      if (stale) {
+        status = {
+          ...status,
+          phase: "offline",
+          currentFiles: [],
+          currentDisplayFiles: [],
+          queuedFiles: [],
+          lastError: "No recent heartbeat was received. Reinstall the watcher if the library folder was moved or renamed.",
+        };
+      }
+      const panel = $("#runtimePanel");
+      panel.dataset.phase = status.phase || "starting";
+      const phaseLabel = runtimePhaseLabel(status.phase);
+      const machine = status.machine || "Checking automation device";
+      $("#runtimeMachine").textContent = machine;
+      syncRuntimeSettingControls(status);
+      const hasCurrent = renderRuntimeFiles(
+        "#runtimeCurrent",
+        "#runtimeCurrentLane",
+        status.currentDisplayFiles || status.currentFiles
+      );
+      const hasQueue = renderRuntimeFiles("#runtimeQueue", "#runtimeQueueLane", status.queuedFiles);
+      $("#runtimeLanes").hidden = !hasCurrent && !hasQueue;
+
+      const time = status.phase === "processing"
+        ? runtimeTime(status.processingStartedAt)
+        : runtimeTime(status.lastCompletedAt);
+      const transport = status.transport === "synced" ? "Remote sync" : status.transport === "live" ? "Live" : "";
+      const activity = status.phase === "processing" && time
+        ? `Started ${time}`
+        : status.lastCompletedAt && time ? `Last completed ${time}` : "";
+      const runtimeDetail = [phaseLabel, transport, activity].filter(Boolean).join(" · ");
+      $("#runtimeState").title = runtimeDetail;
+      $("#runtimeState").setAttribute("aria-label", `${machine} · ${runtimeDetail}`);
+
+      const error = $("#runtimeError");
+      error.hidden = !status.lastError;
+      error.textContent = status.lastError || "";
+      $("#runtimeDetails").hidden = !hasCurrent && !hasQueue && !status.lastError;
+
+      if (status.lastCompletedAt && lastRuntimeCompletion && status.lastCompletedAt !== lastRuntimeCompletion) {
+        showToast("Paper processing is complete. Refresh the page to load the updated catalog.");
+      }
+      lastRuntimeCompletion = status.lastCompletedAt || lastRuntimeCompletion;
+    }
+
+    function loadSyncedRuntimeStatus() {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = `.catalog/runtime-status.js?${Date.now()}`;
+        script.onload = () => {
+          script.remove();
+          if (window.PAPER_RUNTIME_STATUS) resolve(window.PAPER_RUNTIME_STATUS);
+          else reject(new Error("Synced status is empty"));
+        };
+        script.onerror = () => {
+          script.remove();
+          reject(new Error("Synced status is unavailable"));
+        };
+        document.head.append(script);
+      });
+    }
+
+    async function refreshRuntimeStatus() {
+      try {
+        const response = await fetch("/api/status", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const status = await response.json();
+        if (status.isAutomationDevice === false) throw new Error("Automation is assigned to another device");
+        renderRuntimeStatus({ ...status, transport: "live" });
+      } catch {
+        try {
+          renderRuntimeStatus({ ...await loadSyncedRuntimeStatus(), transport: "synced" });
+        } catch {
+          renderRuntimeStatus({
+            phase: "offline",
+            model: "Unavailable",
+            reasoning: "medium",
+            currentFiles: [],
+            queuedFiles: [],
+            lastError: "The automation Mac's status file is not available yet. Check shared-folder synchronization.",
+          });
+        }
+      }
+    }
+
+    function openHandleDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("paper-library-viewer", 1);
+        request.onupgradeneeded = () => request.result.createObjectStore("handles");
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function rememberLibraryHandle(handle) {
+      try {
+        const database = await openHandleDatabase();
+        const transaction = database.transaction("handles", "readwrite");
+        transaction.objectStore("handles").put(handle, "library");
+        await new Promise((resolve, reject) => {
+          transaction.oncomplete = resolve;
+          transaction.onerror = () => reject(transaction.error);
+        });
+        database.close();
+      } catch {
+        // Some browsers limit persistent handle storage on file:// pages.
+      }
+    }
+
+    async function recalledLibraryHandle() {
+      try {
+        const database = await openHandleDatabase();
+        const transaction = database.transaction("handles", "readonly");
+        const request = transaction.objectStore("handles").get("library");
+        const handle = await new Promise((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result || null);
+          request.onerror = () => reject(request.error);
+        });
+        database.close();
+        return handle;
+      } catch {
+        return null;
+      }
+    }
+
+    async function hasWritePermission(handle, requestPermission) {
+      const options = { mode: "readwrite" };
+      if (await handle.queryPermission(options) === "granted") return true;
+      return requestPermission &&
+        await handle.requestPermission(options) === "granted";
+    }
+
+    async function libraryFiles(handle) {
+      const catalogDirectory = await handle.getDirectoryHandle(".catalog");
+      return {
+        csv: await catalogDirectory.getFileHandle("papers.csv"),
+        html: await handle.getFileHandle("papers.html"),
+      };
+    }
+
+    async function organizerSettingsHandle(handle) {
+      const catalogDirectory = await handle.getDirectoryHandle(".catalog");
+      return catalogDirectory.getFileHandle("organizer-settings.json");
+    }
+
+    async function readCatalog(handle) {
+      const { csv } = await libraryFiles(handle);
+      const file = await csv.getFile();
+      return parseCatalogCsv(await file.text());
+    }
+
+    async function writeText(handle, text) {
+      const writable = await handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+    }
+
+    function localTimestamp() {
+      return new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date());
+    }
+
+    async function updateEmbeddedCatalog(htmlHandle, records) {
+      const file = await htmlHandle.getFile();
+      const html = await file.text();
+      const startMarker = "/* CATALOG_DATA_START */";
+      const endMarker = "/* CATALOG_DATA_END */";
+      const start = html.indexOf(startMarker);
+      const end = html.indexOf(endMarker, start);
+      if (start < 0 || end < 0) {
+        throw new Error("Catalog data markers are missing from papers.html.");
+      }
+
+      const timestamp = localTimestamp();
+      const safeJson = JSON.stringify(records)
+        .replaceAll("<", "\\u003c")
+        .replaceAll("\u2028", "\\u2028")
+        .replaceAll("\u2029", "\\u2029");
+      const safeTimestamp = timestamp.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+      const block = `${startMarker}
+    const CATALOG = ${safeJson};
+    const GENERATED_AT = "${safeTimestamp}";
+    ${endMarker}`;
+      const updated = html.slice(0, start) + block + html.slice(end + endMarker.length);
+      await writeText(htmlHandle, updated);
+      return timestamp;
+    }
+
+    async function connectLibrary({ chooseNew = false, requestPermission = true } = {}) {
+      if (typeof window.showDirectoryPicker !== "function") {
+        throw new Error("Direct CSV editing is available in Chrome or Edge.");
+      }
+
+      let handle = chooseNew ? null : libraryHandle;
+      if (!handle) {
+        handle = await window.showDirectoryPicker({
+          id: "paper-library",
+          startIn: "desktop",
+          mode: "readwrite",
+        });
+      }
+      if (!await hasWritePermission(handle, requestPermission)) {
+        throw new Error("Read and write permission for the paper-library folder is required.");
+      }
+
+      const records = await readCatalog(handle);
+      libraryHandle = handle;
+      catalog = records;
+      await rememberLibraryHandle(handle);
+      refreshCatalog();
+      return handle;
+    }
+
+    async function saveRuntimeSettings({ model, reasoning, language, translationRequest, version }) {
+      const allowedModels = new Set(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
+      const allowedReasoning = new Set(["low", "medium", "high", "xhigh"]);
+      const allowedLanguages = new Set(["english", "korean", "chinese"]);
+      if (!allowedModels.has(model) || !allowedReasoning.has(reasoning) || !allowedLanguages.has(language)) {
+        showToast("This model setting is not supported.", "error");
+        return;
+      }
+
+      $("#runtimeSettings").setAttribute("aria-busy", "true");
+      try {
+        const handle = await connectLibrary({ requestPermission: true });
+        const settingsHandle = await organizerSettingsHandle(handle);
+        const current = JSON.parse(await (await settingsHandle.getFile()).text());
+        if (!current?.automationDevice?.id) {
+          throw new Error("No automation device is configured. Set up Paper Library first.");
+        }
+        const currentLanguage = String(current.language || "english");
+        const catalogTranslation = translationRequest
+          ? {
+              id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              sourceLanguage: translationRequest.sourceLanguage,
+              targetLanguage: language,
+              status: "pending",
+              requestedAt: new Date().toISOString(),
+            }
+          : language === currentLanguage ? current.catalogTranslation || null : null;
+        const next = {
+          version: 1,
+          automationDevice: current.automationDevice,
+          model,
+          reasoning,
+          language,
+          catalogTranslation,
+          updatedAt: new Date().toISOString(),
+        };
+        await writeText(settingsHandle, JSON.stringify(next, null, 2) + "\n");
+        pendingRuntimeSettings = { model, reasoning, language };
+        if (version === runtimeSettingsVersion) {
+          runtimeSettingsDirty = false;
+          showToast(
+            translationRequest
+              ? "Language saved. Existing summaries are queued for translation."
+              : "Settings saved. New papers will use this language."
+          );
+        }
+      } catch (error) {
+        if (version === runtimeSettingsVersion) {
+          runtimeSettingsDirty = false;
+          pendingRuntimeSettings = null;
+          refreshRuntimeStatus();
+          if (error?.name !== "AbortError") showToast(error.message || String(error), "error");
+        }
+      } finally {
+        $("#runtimeSettings").removeAttribute("aria-busy");
+      }
+    }
+
+    function queueRuntimeSettingsSave({ translationRequest = null } = {}) {
+      const settings = {
+        model: $("#runtimeModelSetting").value,
+        reasoning: $("#runtimeReasoningSetting").value,
+        language: $("#runtimeLanguageSetting").value,
+        translationRequest,
+        version: ++runtimeSettingsVersion,
+      };
+      runtimeSettingsDirty = true;
+      pendingRuntimeSettings = null;
+      runtimeSettingsSaveQueue = runtimeSettingsSaveQueue.then(() => saveRuntimeSettings(settings));
+    }
+
+    const languageName = (value) => ({ english: "English", korean: "Korean", chinese: "Chinese" })[value] || value;
+
+    function askToTranslateExisting(sourceLanguage, targetLanguage) {
+      const dialog = $("#languageDialog");
+      $("#languageDialogMessage").textContent =
+        `You have been organizing papers in ${languageName(sourceLanguage)}. ` +
+        `Translate every existing summary and novelty sentence to ${languageName(targetLanguage)}? ` +
+        "PDFs and web sources will not be read again.";
+      return new Promise((resolve) => {
+        let settled = false;
+        const finish = (value) => {
+          if (settled) return;
+          settled = true;
+          dialog.close();
+          resolve(value);
+        };
+        $("#keepExistingLanguage").onclick = () => finish(false);
+        $("#translateExistingLanguage").onclick = () => finish(true);
+        dialog.oncancel = (event) => {
+          event.preventDefault();
+          finish(false);
+        };
+        dialog.showModal();
+      });
+    }
+
+    async function changeRuntimeLanguage() {
+      const sourceLanguage = runtimeSelectedLanguage;
+      const targetLanguage = $("#runtimeLanguageSetting").value;
+      if (sourceLanguage === targetLanguage) return;
+      runtimeSettingsDirty = true;
+      pendingRuntimeSettings = null;
+      const translateExisting = await askToTranslateExisting(sourceLanguage, targetLanguage);
+      runtimeSelectedLanguage = targetLanguage;
+      queueRuntimeSettingsSave({
+        translationRequest: translateExisting ? { sourceLanguage, targetLanguage } : null,
+      });
+    }
+
+    async function restoreLibraryConnection() {
+      if (typeof window.showDirectoryPicker !== "function") return;
+      const handle = await recalledLibraryHandle();
+      if (!handle) return;
+      libraryHandle = handle;
+      if (!await hasWritePermission(handle, false)) return;
+      try {
+        catalog = await readCatalog(handle);
+        refreshCatalog();
+      } catch {
+        libraryHandle = null;
+      }
+    }
+
+    function cleanEditorValue(value) {
+      return String(value ?? "").trim().replace(/\s*\r?\n+\s*/g, " ");
+    }
+
+    function editorValues() {
+      const form = $("#editForm");
+      const values = Object.fromEntries(
+        EDITABLE_HEADERS.map((header) => [
+          header,
+          cleanEditorValue(form.elements.namedItem(header).value),
+        ])
+      );
+
+      for (const header of EDITABLE_HEADERS.filter((item) => !OPTIONAL_HEADERS.has(item))) {
+        if (!values[header]) throw new Error("Complete every required field.");
+      }
+      if (!/^\d{4}$/.test(values.year)) {
+        throw new Error("Enter the year as four digits.");
+      }
+      if (!/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(values.added_at)) {
+        throw new Error("Date added must use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.");
+      }
+      if (!["Preprint", "Poster", "Spotlight", "Oral"].includes(values.presentation)) {
+        throw new Error("Presentation must be Preprint, Poster, Spotlight, or Oral.");
+      }
+      if (values.presentation !== "Preprint" && !values.track) {
+        throw new Error("Enter a track for a published paper.");
+      }
+      if (values.site) {
+        let url;
+        try {
+          url = new URL(values.site);
+        } catch {
+          throw new Error("Enter a valid URL for the paper site.");
+        }
+        if (!["http:", "https:"].includes(url.protocol)) {
+          throw new Error("The paper site must use an http or https URL.");
+        }
+      }
+      if (values.track === "Workshop" && !values.workshop) {
+        throw new Error("The Workshop track requires the exact workshop name.");
+      }
+      if (values.track !== "Workshop" && values.workshop) {
+        throw new Error("Enter a workshop name only for the Workshop track.");
+      }
+      return values;
+    }
+
+    async function openEditor(filePath) {
+      try {
+        await connectLibrary({ requestPermission: true });
+        const paper = catalog.find((record) => record.file === filePath);
+        if (!paper) throw new Error("This paper path was not found in the CSV.");
+        editingFile = filePath;
+        for (const header of EDITABLE_HEADERS) {
+          $("#editForm").elements.namedItem(header).value = paper[header];
+        }
+        $("#editDialog").showModal();
+      } catch (error) {
+        if (error?.name !== "AbortError") showToast(error.message || String(error), "error");
+      }
+    }
+
+    async function saveEditor(event) {
+      event.preventDefault();
+      const saveButton = $("#saveEditor");
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving…";
+
+      try {
+        const values = editorValues();
+        const handle = await connectLibrary({ requestPermission: true });
+        const files = await libraryFiles(handle);
+        const latestRecords = parseCatalogCsv(await (await files.csv.getFile()).text());
+        const index = latestRecords.findIndex((record) => record.file === editingFile);
+        if (index < 0) throw new Error("The paper was no longer present in the CSV when saving began.");
+
+        latestRecords[index] = {
+          ...latestRecords[index],
+          ...values,
+          file: latestRecords[index].file,
+        };
+        await writeText(files.csv, csvText(latestRecords));
+
+        let htmlUpdated = true;
+        try {
+          await updateEmbeddedCatalog(files.html, latestRecords);
+        } catch (error) {
+          htmlUpdated = false;
+          console.error(error);
+        }
+
+        catalog = latestRecords;
+        editingFile = "";
+        $("#editDialog").close();
+        refreshCatalog();
+        showToast(
+          htmlUpdated
+            ? "Saved to the CSV and HTML."
+            : "The CSV was saved, but the embedded HTML data could not be updated.",
+          htmlUpdated ? "success" : "error"
+        );
+      } catch (error) {
+        if (error?.name !== "AbortError") showToast(error.message || String(error), "error");
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "Save to CSV";
+      }
+    }
+
+    async function deleteEditor() {
+      const currentPaper = catalog.find((record) => record.file === editingFile);
+      if (!currentPaper) {
+        showToast("The paper to delete could not be found.", "error");
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Delete “${currentPaper.title}”?\n\n` +
+        `This permanently deletes the actual PDF as well as its CSV and HTML entries.\n${currentPaper.file}`
+      );
+      if (!confirmed) return;
+
+      const deleteButton = $("#deleteEditor");
+      const saveButton = $("#saveEditor");
+      const cancelButton = $("#cancelEditor");
+      deleteButton.disabled = true;
+      saveButton.disabled = true;
+      cancelButton.disabled = true;
+      deleteButton.textContent = "Deleting…";
+
+      let files = null;
+      let previousRecords = null;
+      let metadataChanged = false;
+      try {
+        const handle = await connectLibrary({ requestPermission: true });
+        files = await libraryFiles(handle);
+        previousRecords = parseCatalogCsv(await (await files.csv.getFile()).text());
+        const index = previousRecords.findIndex((record) => record.file === editingFile);
+        if (index < 0) throw new Error("The paper was no longer present in the CSV when deletion began.");
+
+        const paper = previousRecords[index];
+        const pdf = await pdfParentDirectory(handle, paper.file);
+        await pdf.directory.getFileHandle(pdf.name);
+
+        const nextRecords = previousRecords.filter((_, recordIndex) => recordIndex !== index);
+        await writeText(files.csv, csvText(nextRecords));
+        metadataChanged = true;
+        await updateEmbeddedCatalog(files.html, nextRecords);
+        await pdf.directory.removeEntry(pdf.name);
+
+        catalog = nextRecords;
+        editingFile = "";
+        $("#editDialog").close();
+        refreshCatalog();
+        showToast("Deleted the paper entry and PDF file.");
+      } catch (error) {
+        if (metadataChanged && files && previousRecords) {
+          try {
+            await writeText(files.csv, csvText(previousRecords));
+            await updateEmbeddedCatalog(files.html, previousRecords);
+            catalog = previousRecords;
+            refreshCatalog();
+          } catch (rollbackError) {
+            console.error("Paper deletion rollback failed", rollbackError);
+            showToast("Deletion was only partially applied. Check the CSV and PDF.", "error");
+            return;
+          }
+        }
+        if (error?.name !== "AbortError") showToast(error.message || String(error), "error");
+      } finally {
+        deleteButton.disabled = false;
+        saveButton.disabled = false;
+        cancelButton.disabled = false;
+        deleteButton.textContent = "Delete paper";
+      }
+    }
+
+    ["search", "category", "venue", "year", "track", "presentation", "sort"].forEach((id) => {
+      $("#" + id).addEventListener(id === "search" ? "input" : "change", render);
+    });
+    $("#resetFilters").addEventListener("click", () => {
+      $("#search").value = "";
+      ["category", "venue", "year", "track", "presentation"].forEach((id) => {
+        $("#" + id).value = "";
+      });
+      render();
+    });
+    ["#runtimeModelSetting", "#runtimeReasoningSetting"].forEach((selector) => {
+      $(selector).addEventListener("change", queueRuntimeSettingsSave);
+    });
+    $("#runtimeLanguageSetting").addEventListener("change", changeRuntimeLanguage);
+    $("#editForm").addEventListener("submit", saveEditor);
+    $("#deleteEditor").addEventListener("click", deleteEditor);
+    $("#closeEditor").addEventListener("click", () => $("#editDialog").close());
+    $("#cancelEditor").addEventListener("click", () => $("#editDialog").close());
+    $("#editDialog").addEventListener("click", (event) => {
+      if (event.target === $("#editDialog")) $("#editDialog").close();
+    });
+
+    refreshCatalog();
+    restoreLibraryConnection();
+    refreshRuntimeStatus();
+    setInterval(refreshRuntimeStatus, 2_000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refreshRuntimeStatus();
+    });
+  </script>
+</body>
+</html>
