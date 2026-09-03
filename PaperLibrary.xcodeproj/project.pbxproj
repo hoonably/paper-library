@@ -23,6 +23,8 @@
 		A10000000000000000000015 /* LibrarySeed in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* LibrarySeed */; };
 		A10000000000000000000016 /* LibraryLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* LibraryLayout.swift */; };
 		A10000000000000000000018 /* AutomationSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* AutomationSetupView.swift */; };
+		A10000000000000000000019 /* UpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* UpdateController.swift */; };
+		A10000000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C20000000000000000000001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +47,7 @@
 		A20000000000000000000018 /* LibrarySeed */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/LibrarySeed; sourceTree = "<group>"; };
 		A20000000000000000000019 /* LibraryLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LibraryLayout.swift; sourceTree = "<group>"; };
 		A20000000000000000000021 /* AutomationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AutomationSetupView.swift; sourceTree = "<group>"; };
+		A20000000000000000000022 /* UpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/UpdateController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +55,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000020 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,6 +76,7 @@
 			children = (
 				A20000000000000000000001 /* PaperLibraryApp.swift */,
 				A20000000000000000000014 /* AppDelegate.swift */,
+				A20000000000000000000022 /* UpdateController.swift */,
 				A20000000000000000000002 /* Paper.swift */,
 				A20000000000000000000016 /* OrganizerStatus.swift */,
 				A20000000000000000000003 /* CSVCodec.swift */,
@@ -123,6 +128,9 @@
 			dependencies = (
 			);
 			name = PaperLibrary;
+			packageProductDependencies = (
+				C20000000000000000000001 /* Sparkle */,
+			);
 			productName = PaperLibrary;
 			productReference = A20000000000000000000013 /* Paper Library.app */;
 			productType = "com.apple.product-type.application";
@@ -151,6 +159,9 @@
 				Base,
 			);
 			mainGroup = A40000000000000000000001;
+			packageReferences = (
+				C10000000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = A40000000000000000000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -179,6 +190,7 @@
 			files = (
 				A10000000000000000000001 /* PaperLibraryApp.swift in Sources */,
 				A10000000000000000000011 /* AppDelegate.swift in Sources */,
+				A10000000000000000000019 /* UpdateController.swift in Sources */,
 				A10000000000000000000002 /* Paper.swift in Sources */,
 				A10000000000000000000013 /* OrganizerStatus.swift in Sources */,
 				A10000000000000000000003 /* CSVCodec.swift in Sources */,
@@ -307,7 +319,7 @@
 				CODE_SIGN_ENTITLEMENTS = PaperLibrary/PaperLibrary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -316,7 +328,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoonably.PaperLibrary;
 				PRODUCT_NAME = "Paper Library";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -332,7 +344,7 @@
 				CODE_SIGN_ENTITLEMENTS = PaperLibrary/PaperLibrary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -341,7 +353,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoonably.PaperLibrary;
 				PRODUCT_NAME = "Paper Library";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -372,6 +384,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C10000000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.9.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C20000000000000000000001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C10000000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A80000000000000000000001 /* Project object */;
 }

@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let store = LibraryStore.shared
         store.prepareManagedLibraryIfNeeded()
         if !launchedForBackgroundAction {
+            UpdateController.shared.start()
             store.presentAutomationSetupIfNeeded()
         }
         NSApp.servicesProvider = self

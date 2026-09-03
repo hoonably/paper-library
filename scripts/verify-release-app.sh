@@ -19,6 +19,7 @@ version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plis
 build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
 executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")"
 executable="$app_bundle/Contents/MacOS/$executable_name"
+sparkle_framework="$app_bundle/Contents/Frameworks/Sparkle.framework"
 
 if [[ "$bundle_id" == *'$('* || "$version" == *'$('* || "$build_number" == *'$('* ]]; then
   print -u2 "The app contains unresolved build-setting placeholders."
@@ -26,6 +27,21 @@ if [[ "$bundle_id" == *'$('* || "$version" == *'$('* || "$build_number" == *'$('
 fi
 
 codesign --verify --deep --strict --verbose=2 "$app_bundle"
+if [[ ! -d "$sparkle_framework" ]]; then
+  print -u2 "The app is missing Sparkle.framework."
+  exit 65
+fi
+
+feed_url="$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$plist")"
+public_update_key="$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$plist")"
+requires_signed_feed="$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$plist")"
+verifies_before_extraction="$(/usr/libexec/PlistBuddy -c 'Print :SUVerifyUpdateBeforeExtraction' "$plist")"
+if [[ "$feed_url" != https://* || -z "$public_update_key" ||
+      "$requires_signed_feed" != "true" || "$verifies_before_extraction" != "true" ]]; then
+  print -u2 "The app does not contain a secure Sparkle update configuration."
+  exit 65
+fi
+
 signature_details="$(codesign -dv --verbose=4 "$app_bundle" 2>&1)"
 if ! print -r -- "$signature_details" | grep -q '^Authority=Developer ID Application:'; then
   print -u2 "The app is not signed with a Developer ID Application certificate."

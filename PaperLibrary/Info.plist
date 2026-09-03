@@ -36,6 +36,16 @@
 	<true/>
 	<key>NSSupportsSuddenTermination</key>
 	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/hoonably/paper-library/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>uzYtC7jof9lQV9BKNLmRfr7oyyCY7fnK+vZlPlacds0=</string>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>NSServices</key>
 	<array>
 		<dict>

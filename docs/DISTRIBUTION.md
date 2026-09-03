@@ -4,6 +4,8 @@ The app is a native SwiftUI macOS application. It creates and manages its own da
 
 The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them.
 
+Sparkle provides in-app updates through the HTTPS appcast at `appcast.xml`. The app checks on Sparkle's normal schedule and exposes **Paper Library → Check for Updates…**. Finder Service launches do not start the updater.
+
 ## Requirements
 
 - Free build: macOS 14 or later and the Xcode Command Line Tools
@@ -23,12 +25,43 @@ This normally creates `dist/Paper Library.app` and `dist/Paper-Library.zip`. The
 
 This build can be attached to a GitHub Release, but it is not checked or notarized by Apple. State that limitation clearly in the release notes. After the first blocked launch, users must open **System Settings → Privacy & Security** and choose **Open Anyway**. Upload the ZIP, not the loose `.app` directory.
 
+The first release that includes Sparkle must still be downloaded manually by existing users. Later releases can be installed inside the app.
+
+## Free release updates
+
+Update archives, the appcast, and release notes are authenticated with a Sparkle EdDSA key, independently of Apple's paid Developer ID program. The public key is embedded in `PaperLibrary/Info.plist`. The matching private key must never be committed or attached to a release.
+
+On the release Mac, the key is stored in the login Keychain under the Sparkle account `hoonably.paper-library`. The local release script reads its exported copy from:
+
+```text
+~/Library/Application Support/Paper Library Development/sparkle-private-key
+```
+
+Keep an additional secure backup. Without this key, free builds already installed by users cannot trust a replacement key automatically.
+
+After setting the release version and build number, run the release checks, build the ZIP, and prepare the update feed with one command:
+
+```sh
+scripts/prepare-release.sh
+```
+
+Pass a Markdown file to include signed release notes in the update window: `scripts/prepare-release.sh /path/to/release-notes.md`.
+
+The release preparation verifies that the local signing key matches the public key embedded in the app, signs `dist/Paper-Library.zip`, and updates the repository's `appcast.xml`. Commit the version changes and generated appcast together, push the commit and tag, then upload that exact ZIP as `Paper-Library.zip` to the matching `v<version>` GitHub Release. Do not edit the generated appcast or replace the ZIP afterward.
+
+To sign on another Mac, transfer the private-key backup securely and either place it at the path above or provide its path only for the release command:
+
+```sh
+SPARKLE_PRIVATE_KEY_FILE='/secure/path/sparkle-private-key' scripts/generate-appcast.sh
+```
+
 ## Version policy
 
 - Do not change the app version for ordinary feature or bug-fix commits.
 - Change it only when the user explicitly decides to create a new release.
 - Keep early testing releases below `1.0.0`; use `1.0.0` only after the app has been sufficiently tested.
 - Keep `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, and the defaults in `scripts/build-local-app.sh` synchronized.
+- Generate and commit `appcast.xml` only as part of a release.
 
 ## Release archive
 
@@ -63,10 +96,12 @@ Do not enable App Sandbox for this architecture. The background organizer and th
 
 - Run `swift build`.
 - Run `scripts/run-core-checks.sh`.
+- Confirm **Paper Library → Check for Updates…** is enabled in a packaged app.
 - Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
 - Confirm **Set Up Automation** installs the watcher and the header updates, then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
 - From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, and the PDF appears in `Waiting`.
 - Verify the exported app with `codesign --verify --deep --strict --verbose=2`.
+- Confirm the app contains `Contents/Frameworks/Sparkle.framework`, and that `SUFeedURL` and `SUPublicEDKey` are present in its Info.plist.
 - Verify the executable contains both `arm64` and `x86_64` architectures.
 - Run `scripts/verify-release-app.sh` and upload only the ZIP made from that verified app.
 - Test the notarized artifact on a Mac that does not have a development certificate installed.

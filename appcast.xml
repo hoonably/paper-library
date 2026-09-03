@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+-->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Paper Library Updates</title>
+        <link>https://github.com/hoonably/paper-library/releases</link>
+        <description>Paper Library release updates</description>
+        <language>en</language>
+        <item>
+            <title>0.3.0</title>
+            <pubDate>Fri, 04 Sep 2026 02:43:19 +0900</pubDate>
+            <link>https://github.com/hoonably/paper-library/releases/tag/v0.3.0</link>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <sparkle:releaseNotesLink sparkle:edSignature="ITxi2vDPj5LN32UFjxkA3xNhxrC/Nz6zheKU8g07c23SBArZjckj8VF02unU1PsMr6w1c3mjLWNhqlUDzM/vAA==" sparkle:length="877">https://github.com/hoonably/paper-library/releases/download/v0.3.0/Paper-Library.md</sparkle:releaseNotesLink>
+            <enclosure url="https://github.com/hoonably/paper-library/releases/download/v0.3.0/Paper-Library.zip" length="2697603" type="application/octet-stream" sparkle:edSignature="wV8vnge5ojraRMCg7fJeYTtGNcZeJOWklRQNGahO65JWhSeJr1oqZkz5bVLwtwJ6ZqQ9Ttm/3aA3SPQYI4e3Cw=="/>
+        </item>
+    </channel>
+</rss>
+<!-- sparkle-signatures:
+edSignature: 7VksagJQoUVgWap91WpRyxwhd69itqcCgylYRScoSpfQE45zMFrSviv7YTraEcVGfO26o0dOkhRv9jFJj7LOBg==
+length: 1683
+-->

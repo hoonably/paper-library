@@ -4,6 +4,7 @@ import SwiftUI
 struct PaperLibraryApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = LibraryStore.shared
+    @StateObject private var updateController = UpdateController.shared
 
     var body: some Scene {
         WindowGroup("") {
@@ -16,6 +17,13 @@ struct PaperLibraryApp: App {
         }
         .defaultSize(width: 1280, height: 780)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    updateController.checkForUpdates()
+                }
+                .disabled(!updateController.canCheckForUpdates)
+            }
+
             CommandGroup(after: .newItem) {
                 Button("Reload Catalog") {
                     store.reload()

@@ -12,22 +12,27 @@ scratch_directory="$temporary_directory/swift-build"
 trap 'rm -rf "$temporary_directory"' EXIT
 
 cd "$repository_root"
-swift build -c release --scratch-path "$scratch_directory"
+swift build --disable-keychain -c release --scratch-path "$scratch_directory"
 
 mkdir -p "$destination_root"
 rm -rf "$app_bundle"
 rm -f "$zip_path"
-mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources"
+mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources" "$staged_app/Contents/Frameworks"
 
 cp "$scratch_directory/release/PaperLibrary" "$staged_app/Contents/MacOS/PaperLibrary"
+ditto "$scratch_directory/release/Sparkle.framework" "$staged_app/Contents/Frameworks/Sparkle.framework"
 cp "PaperLibrary/Info.plist" "$staged_app/Contents/Info.plist"
 ditto "Sources/PaperLibrary/Resources/LibrarySeed" "$staged_app/Contents/Resources/LibrarySeed"
+
+if ! otool -l "$staged_app/Contents/MacOS/PaperLibrary" | grep -q '@executable_path/../Frameworks'; then
+  install_name_tool -add_rpath '@executable_path/../Frameworks' "$staged_app/Contents/MacOS/PaperLibrary"
+fi
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable PaperLibrary" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${BUNDLE_ID:-com.hoonably.PaperLibrary}" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName Paper Library" "$staged_app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION:-0.2.0}" "$staged_app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-2}" "$staged_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION:-0.3.0}" "$staged_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-3}" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion 14.0" "$staged_app/Contents/Info.plist"
 
 iconset="$temporary_directory/AppIcon.iconset"
@@ -48,17 +53,16 @@ iconutil -c icns "$iconset" -o "$staged_app/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$staged_app/Contents/Info.plist"
 xattr -cr "$staged_app"
 
-if [[ -n "${CODE_SIGN_IDENTITY:-}" ]]; then
-  codesign --force --options runtime \
-    --entitlements "PaperLibrary/PaperLibrary.entitlements" \
-    --sign "$CODE_SIGN_IDENTITY" "$staged_app"
-else
-  codesign --force --deep \
-    --entitlements "PaperLibrary/PaperLibrary.entitlements" \
-    --sign - "$staged_app"
-fi
+codesign --verify --deep --strict --verbose=2 "$staged_app/Contents/Frameworks/Sparkle.framework"
+codesign --force \
+  --entitlements "PaperLibrary/PaperLibrary.entitlements" \
+  --sign - "$staged_app"
 
 codesign --verify --deep --strict --verbose=2 "$staged_app"
+if ! otool -L "$staged_app/Contents/MacOS/PaperLibrary" | grep -q '@rpath/Sparkle.framework/Versions/B/Sparkle'; then
+  print -u2 "The app executable is not linked to Sparkle."
+  exit 65
+fi
 ditto -c -k --sequesterRsrc --keepParent "$staged_app" "$staged_zip"
 cp "$staged_zip" "$zip_path"
 
