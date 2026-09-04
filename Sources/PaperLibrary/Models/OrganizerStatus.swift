@@ -26,6 +26,7 @@ private struct OrganizerSettingsDocument: Decodable {
 }
 
 private struct RuntimeStatusDocument: Decodable {
+    let mode: String?
     let phase: String?
     let model: String?
     let reasoning: String?
@@ -112,15 +113,15 @@ struct OrganizerStatus: Equatable {
 
     var phaseLabel: String {
         switch phase {
-        case "starting": "Starting watcher"
+        case "starting": "Starting organizer"
         case "checking": "Checking for new PDFs"
         case "queued": "Waiting to process"
         case "processing": "Processing with Codex"
-        case "idle": "Waiting for new PDFs"
+        case "idle": "Ready for Finder"
         case "error": "Processing error"
         case "remote": "Using remote automation"
-        case "offline": "Watcher unavailable"
-        default: "Watcher unavailable"
+        case "offline": "Organizer unavailable"
+        default: "Organizer unavailable"
         }
     }
 
@@ -138,7 +139,7 @@ struct OrganizerStatus: Equatable {
         if let updatedAt {
             lines.append("Last status update: \(updatedAt)")
         }
-        lines.append("This status is read from Paper Library's app storage.")
+        lines.append("The organizer starts only when PDFs are added from Finder.")
         return lines.joined(separator: "\n")
     }
 }
@@ -168,13 +169,17 @@ enum OrganizerStatusFile {
             else { return false }
             return now.timeIntervalSince(updatedAt) <= staleAfter
         } ?? false
+        let activePhases = ["starting", "checking", "queued", "processing"]
+        let runtimeIsCurrent = runtime?.mode == "on-demand" && !activePhases.contains(runtime?.phase ?? "")
+            ? runtime != nil
+            : runtimeIsFresh
         let currentFiles = runtime?.currentFiles ?? []
         let progressByFile = (processingDocument?.items ?? []).reduce(
             into: [String: ProcessingPaperStatus]()
         ) { result, item in
             result[item.file] = item
         }
-        let processingPapers = runtimeIsFresh && runtime?.phase == "processing"
+        let processingPapers = runtimeIsCurrent && runtime?.phase == "processing"
             ? currentFiles.map { progressByFile[$0] ?? ProcessingPaperStatus(file: $0, title: nil) }
             : []
         let activeFiles: [String]
@@ -186,25 +191,25 @@ enum OrganizerStatusFile {
             activeFiles = currentFiles
         }
         let connectionError: String
-        if runtimeIsFresh {
+        if runtimeIsCurrent {
             connectionError = runtime?.lastError ?? ""
         } else if configuredDevice == nil {
             connectionError = "Paper Organizer has not been configured for this library."
         } else if runtime == nil {
-            connectionError = "No watcher status has been received from the automation device yet."
+            connectionError = "No organizer status has been received from the automation device yet."
         } else {
-            connectionError = "No recent heartbeat was received. Run automation setup again if the watcher is no longer active."
+            connectionError = "No recent processing status was received. Run automation setup again if the organizer was interrupted."
         }
 
         return OrganizerStatus(
-            hasRuntimeStatus: runtime != nil && runtimeIsFresh,
-            phase: runtimeIsFresh ? runtime?.phase ?? "offline" : "offline",
+            hasRuntimeStatus: runtime != nil && runtimeIsCurrent,
+            phase: runtimeIsCurrent ? runtime?.phase ?? "offline" : "offline",
             automationDeviceName: configuredDevice?.name ?? runtime?.machine ?? "Automation not configured",
             model: settings?.model ?? runtime?.configuredModel ?? runtime?.model ?? "gpt-5.6-terra",
             reasoning: settings?.reasoning ?? runtime?.configuredReasoning ?? runtime?.reasoning ?? "medium",
             language: settings?.language ?? runtime?.configuredLanguage ?? runtime?.language ?? "korean",
-            activeFiles: runtimeIsFresh ? activeFiles : [],
-            queuedFiles: runtimeIsFresh ? runtime?.queuedFiles ?? [] : [],
+            activeFiles: runtimeIsCurrent ? activeFiles : [],
+            queuedFiles: runtimeIsCurrent ? runtime?.queuedFiles ?? [] : [],
             processingPapers: processingPapers,
             lastCompletedAt: runtime?.lastCompletedAt,
             lastError: connectionError,

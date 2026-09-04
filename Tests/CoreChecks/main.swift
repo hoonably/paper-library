@@ -158,7 +158,7 @@ do {
     try settingsJSON.write(to: settingsURL, atomically: true, encoding: .utf8)
     let waitingStatus = OrganizerStatusFile.read(from: library, now: Date())
     try check(
-        waitingStatus.lastError == "No watcher status has been received from the automation device yet.",
+        waitingStatus.lastError == "No organizer status has been received from the automation device yet.",
         "A configured library without runtime status showed the wrong warning"
     )
     let runtimeJSON = """
@@ -178,7 +178,7 @@ do {
     try check(organizerStatus.processingPapers.isEmpty, "A display-only status became a processing paper")
 
     let progressiveRuntimeJSON = """
-    {"phase":"processing","machine":"Office Mac","currentFiles":["Waiting/2605.13778v1.pdf"],"queuedFiles":[],"lastError":"","updatedAt":"2026-09-02T01:02:03.456Z"}
+    {"mode":"on-demand","phase":"processing","machine":"Office Mac","currentFiles":["Waiting/2605.13778v1.pdf"],"queuedFiles":[],"lastError":"","updatedAt":"2026-09-02T01:02:03.456Z"}
     """
     try progressiveRuntimeJSON.write(
         to: catalogDirectory.appendingPathComponent("runtime-status.json"),
@@ -206,8 +206,22 @@ do {
     let staleTime = try Date("2026-09-02T01:05:04Z", strategy: .iso8601)
     let staleStatus = OrganizerStatusFile.read(from: library, now: staleTime)
     try check(!staleStatus.hasRuntimeStatus, "A stale runtime heartbeat was treated as connected")
-    try check(staleStatus.phase == "offline", "A stale runtime heartbeat did not mark the watcher offline")
+    try check(staleStatus.phase == "offline", "A stale active run did not mark the organizer offline")
     try check(staleStatus.activeFiles.isEmpty, "Stale processing files were still shown as active")
+
+    let onDemandIdleRuntimeJSON = """
+    {"mode":"on-demand","phase":"idle","machine":"Office Mac","currentFiles":[],"queuedFiles":[],"lastError":"","updatedAt":"2026-09-02T01:02:03.456Z"}
+    """
+    try onDemandIdleRuntimeJSON.write(
+        to: catalogDirectory.appendingPathComponent("runtime-status.json"),
+        atomically: true,
+        encoding: .utf8
+    )
+    let laterTime = try Date("2026-09-03T01:05:04Z", strategy: .iso8601)
+    let onDemandIdleStatus = OrganizerStatusFile.read(from: library, now: laterTime)
+    try check(onDemandIdleStatus.hasRuntimeStatus, "An idle on-demand organizer became stale")
+    try check(onDemandIdleStatus.phase == "idle", "An idle on-demand organizer was not shown as ready")
+    try check(onDemandIdleStatus.phaseLabel == "Ready for Finder", "The on-demand ready label is incorrect")
 
     try OrganizerStatusFile.update(.model, value: "gpt-5.6-sol", in: library)
     let changedStatus = OrganizerStatusFile.read(from: library, now: statusTime)

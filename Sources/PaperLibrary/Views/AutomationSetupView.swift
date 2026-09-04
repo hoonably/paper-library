@@ -14,7 +14,7 @@ struct AutomationSetupView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Set Up Paper Library")
                         .font(.title2.weight(.semibold))
-                    Text("One quick setup enables automatic paper organization on this Mac.")
+                    Text("One quick setup enables Finder-triggered paper organization on this Mac.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -51,7 +51,7 @@ struct AutomationSetupView: View {
                             ProgressView()
                                 .controlSize(.small)
                         }
-                        Text(store.isSettingUpAutomation ? "Starting…" : "Start Automation")
+                        Text(store.isSettingUpAutomation ? "Setting Up…" : "Finish Setup")
                     }
                     .frame(minWidth: 130)
                 }
@@ -112,7 +112,7 @@ struct AutomationSetupView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Codex CLI is not signed in")
                         .fontWeight(.semibold)
-                    Text("Sign in once to let the background organizer use Codex.")
+                    Text("Sign in once to let the on-demand organizer use Codex.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

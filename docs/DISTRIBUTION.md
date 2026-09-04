@@ -2,7 +2,7 @@
 
 The app is a native SwiftUI macOS application. It creates and manages its own data under `~/Library/Application Support/Paper Library`; users do not choose or download a library folder.
 
-The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them.
+The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them. The same action starts one detached organizer run, which drains the queue and exits. No persistent folder watcher or LaunchAgent is installed.
 
 Sparkle provides in-app updates through the HTTPS appcast at `appcast.xml`. The app checks on Sparkle's normal schedule and exposes **Paper Library → Check for Updates…**. Finder Service launches do not start the updater.
 
@@ -90,7 +90,7 @@ SPARKLE_PRIVATE_KEY_FILE='/secure/path/sparkle-private-key' scripts/generate-app
 
 The Developer ID workflow below avoids the security override and remains the preferred option for wider distribution.
 
-Do not enable App Sandbox for this architecture. The background organizer and the app intentionally share the Application Support library.
+Do not enable App Sandbox for this architecture. The on-demand organizer and the app intentionally share the Application Support library.
 
 ## Release checks
 
@@ -98,8 +98,8 @@ Do not enable App Sandbox for this architecture. The background organizer and th
 - Run `scripts/run-core-checks.sh`.
 - Confirm **Paper Library → Check for Updates…** is enabled in a packaged app.
 - Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
-- Confirm **Set Up Automation** installs the watcher and the header updates, then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
-- From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, and the PDF appears in `Waiting`.
+- Confirm **Set Up Automation** configures on-demand execution without installing a LaunchAgent, and that the header remains **Ready for Finder** while idle. Then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
+- From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, an organizer process starts, and the process exits after the PDF leaves `Waiting`.
 - Verify the exported app with `codesign --verify --deep --strict --verbose=2`.
 - Confirm the app contains `Contents/Frameworks/Sparkle.framework`, and that `SUFeedURL` and `SUPublicEDKey` are present in its Info.plist.
 - Verify the executable contains both `arm64` and `x86_64` architectures.

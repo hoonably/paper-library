@@ -37,7 +37,7 @@ struct OrganizerStatusHeader: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(store.isSettingUpAutomation)
-                .help("Install the background organizer for this Mac.")
+                .help("Configure the organizer that runs when PDFs are added from Finder.")
             }
 
             Spacer(minLength: 8)

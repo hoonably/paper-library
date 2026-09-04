@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let store = LibraryStore.shared
         store.prepareManagedLibraryIfNeeded()
         if !launchedForBackgroundAction {
+            store.migrateLegacyAutomationIfNeeded()
             UpdateController.shared.start()
             store.presentAutomationSetupIfNeeded()
         }
@@ -147,8 +148,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let store = LibraryStore.shared
         let result = store.moveIncomingPDFs(urls)
-        if !result.failures.isEmpty {
-            errorPointer.pointee = result.failureSummary as NSString
+        var errors = result.failureSummary
+        if !result.moved.isEmpty, let launchError = store.startOrganizerInBackground() {
+            errors = [errors, launchError].filter { !$0.isEmpty }.joined(separator: "\n")
+        }
+        if !errors.isEmpty {
+            errorPointer.pointee = errors as NSString
         }
     }
 }

@@ -39,6 +39,7 @@ final class LibraryStore: ObservableObject {
 
     private var didPrepareLibrary = false
     private var catalogRefreshTask: Task<Void, Never>?
+    private var automationMigrationTask: Task<Void, Never>?
 
     var hasLibrary: Bool { libraryURL != nil }
     var isAutomationConfigured: Bool {
@@ -173,10 +174,37 @@ final class LibraryStore: ObservableObject {
             case .success:
                 self.refreshOrganizerStatus()
                 self.isShowingAutomationSetup = false
-                self.noticeMessage = "Paper Organizer is ready. PDFs added from Finder will now be processed automatically."
+                self.noticeMessage = "Paper Organizer is ready. A Finder action will start it only when PDFs are added."
             case .failure(let message):
                 self.errorMessage = message
             }
+        }
+    }
+
+    func migrateLegacyAutomationIfNeeded() {
+        guard isAutomationConfigured, automationMigrationTask == nil, let libraryURL else { return }
+        automationMigrationTask = Task { @MainActor [weak self] in
+            let result = await Task.detached {
+                Self.runOrganizerUtility("migrate", in: libraryURL)
+            }.value
+            guard let self else { return }
+            self.automationMigrationTask = nil
+            if case .failure(let message) = result {
+                self.errorMessage = message
+            }
+            self.refreshOrganizerStatus()
+        }
+    }
+
+    func startOrganizerInBackground() -> String? {
+        guard let libraryURL else { return "Paper Library storage is unavailable." }
+        switch Self.runOrganizerUtility("start", in: libraryURL) {
+        case .success:
+            refreshOrganizerStatus()
+            return nil
+        case .failure(let message):
+            errorMessage = message
+            return message
         }
     }
 
@@ -398,6 +426,46 @@ final class LibraryStore: ObservableObject {
             let text = String(decoding: data, as: UTF8.self).trimmed
             guard process.terminationStatus == 0 else {
                 return .failure(text.isEmpty ? "Paper Organizer setup failed." : text)
+            }
+            return .success
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
+    nonisolated private static func runOrganizerUtility(
+        _ command: String,
+        in root: URL
+    ) -> AutomationSetupResult {
+        let script = root
+            .appendingPathComponent(LibraryLayout.automationDirectoryName, isDirectory: true)
+            .appendingPathComponent("paper-organizer.mjs", isDirectory: false)
+        guard FileManager.default.fileExists(atPath: script.path) else {
+            return .failure("The app's automation files are missing. Reinstall Paper Library and try again.")
+        }
+        guard let node = findNodeExecutable() else {
+            return .failure("Paper Organizer needs Node.js 18 or newer. Install Node.js, then try again.")
+        }
+
+        let process = Process()
+        process.executableURL = node
+        process.arguments = [script.path, command, "--root", root.path]
+        var environment = ProcessInfo.processInfo.environment
+        let commonPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+        environment["PATH"] = (commonPaths + [environment["PATH"] ?? ""])
+            .joined(separator: ":")
+        process.environment = environment
+
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            let text = String(decoding: data, as: UTF8.self).trimmed
+            guard process.terminationStatus == 0 else {
+                return .failure(text.isEmpty ? "Paper Organizer could not start." : text)
             }
             return .success
         } catch {
