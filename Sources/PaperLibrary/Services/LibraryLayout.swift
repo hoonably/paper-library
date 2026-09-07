@@ -83,7 +83,9 @@ enum LibraryLayout {
         else { return }
 
         let relativeFiles = [
+            "Automation/PAPER_LIBRARY_EDITOR.md",
             "Automation/PAPER_ORGANIZER.md",
+            "Automation/library-command-schema.json",
             "Automation/paper-organizer.mjs",
         ]
         for relativePath in relativeFiles {

@@ -4,7 +4,7 @@ The app is a native SwiftUI macOS application. It creates and manages its own da
 
 The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them. The same action starts one detached organizer run, which drains the queue and exits. No persistent folder watcher or LaunchAgent is installed.
 
-Sparkle provides in-app updates through the HTTPS appcast at `appcast.xml`. The app checks on Sparkle's normal schedule and exposes **Paper Library → Check for Updates…**. Finder Service launches do not start the updater.
+Sparkle provides in-app updates through the HTTPS appcast at `appcast.xml`. The app checks on Sparkle's normal schedule and exposes **Paper Library → Check for Updates…**. **Version History** opens the repository's GitHub Releases page. Finder Service launches do not start the updater.
 
 ## Requirements
 
@@ -23,13 +23,13 @@ scripts/build-local-app.sh
 
 This normally creates `dist/Paper Library.app` and `dist/Paper-Library.zip`. The app is signed and verified in a temporary staging directory before both outputs are copied into the repository. If the destination attaches metadata that invalidates the loose signed bundle, the script removes that copy and keeps only the verified ZIP.
 
-This build can be attached to a GitHub Release, but it is not checked or notarized by Apple. State that limitation clearly in the release notes. After the first blocked launch, users must open **System Settings → Privacy & Security** and choose **Open Anyway**. Upload the ZIP, not the loose `.app` directory.
+This build can be attached to a GitHub Release, but it is not checked or notarized by Apple. State that limitation clearly in the GitHub Release description. After the first blocked launch, users must open **System Settings → Privacy & Security** and choose **Open Anyway**. Upload the ZIP, not the loose `.app` directory.
 
 The first release that includes Sparkle must still be downloaded manually by existing users. Later releases can be installed inside the app.
 
 ## Free release updates
 
-Update archives, the appcast, and release notes are authenticated with a Sparkle EdDSA key, independently of Apple's paid Developer ID program. The public key is embedded in `PaperLibrary/Info.plist`. The matching private key must never be committed or attached to a release.
+Update archives and the appcast are authenticated with a Sparkle EdDSA key, independently of Apple's paid Developer ID program. The public key is embedded in `PaperLibrary/Info.plist`. The matching private key must never be committed or attached to a release.
 
 On the release Mac, the key is stored in the login Keychain under the Sparkle account `hoonably.paper-library`. The local release script reads its exported copy from:
 
@@ -45,9 +45,9 @@ After setting the release version and build number, run the release checks, buil
 scripts/prepare-release.sh
 ```
 
-Pass a Markdown file to include signed release notes in the update window: `scripts/prepare-release.sh /path/to/release-notes.md`.
+Write release notes directly in the GitHub Release description. Start with the changes themselves; do not repeat the release name or version as a heading inside the description. Do not create or upload a separate Markdown asset. The appcast points **Version History** to `https://github.com/hoonably/paper-library/releases`.
 
-The release preparation verifies that the local signing key matches the public key embedded in the app, signs `dist/Paper-Library.zip`, and updates the repository's `appcast.xml`. Commit the version changes and generated appcast together, push the commit and tag, then upload that exact ZIP as `Paper-Library.zip` to the matching `v<version>` GitHub Release. Do not edit the generated appcast or replace the ZIP afterward.
+The release preparation verifies that the local signing key matches the public key embedded in the app, signs `dist/Paper-Library.zip`, and updates the repository's `appcast.xml`. Commit the version changes and generated appcast together, push the commit and tag, then upload that exact ZIP as the only asset named `Paper-Library.zip` to the matching `v<version>` GitHub Release. Do not edit the generated appcast or replace the ZIP afterward.
 
 To sign on another Mac, transfer the private-key backup securely and either place it at the path above or provide its path only for the release command:
 
@@ -97,6 +97,7 @@ Do not enable App Sandbox for this architecture. The on-demand organizer and the
 - Run `swift build`.
 - Run `scripts/run-core-checks.sh`.
 - Confirm **Paper Library → Check for Updates…** is enabled in a packaged app.
+- Confirm **Version History** opens `https://github.com/hoonably/paper-library/releases` in the default browser.
 - Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
 - Confirm **Set Up Automation** configures on-demand execution without installing a LaunchAgent, and that the header remains **Ready for Finder** while idle. Then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
 - From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, an organizer process starts, and the process exits after the PDF leaves `Waiting`.

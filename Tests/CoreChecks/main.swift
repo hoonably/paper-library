@@ -80,6 +80,13 @@ do {
     invalid.track = ""
     try check(invalid.validationError() == "A published paper needs a track.", "Track validation did not run")
 
+    var unknownAffiliation = original
+    unknownAffiliation.affiliation = ""
+    try check(
+        unknownAffiliation.validationError() == nil,
+        "A paper without a known affiliation was rejected"
+    )
+
     let temporaryDirectory = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
@@ -158,7 +165,7 @@ do {
     try settingsJSON.write(to: settingsURL, atomically: true, encoding: .utf8)
     let waitingStatus = OrganizerStatusFile.read(from: library, now: Date())
     try check(
-        waitingStatus.lastError == "No organizer status has been received from the automation device yet.",
+        waitingStatus.lastError == "The local organizer has not reported its status yet.",
         "A configured library without runtime status showed the wrong warning"
     )
     let runtimeJSON = """
@@ -209,6 +216,18 @@ do {
     try check(staleStatus.phase == "offline", "A stale active run did not mark the organizer offline")
     try check(staleStatus.activeFiles.isEmpty, "Stale processing files were still shown as active")
 
+    let editingRuntimeJSON = """
+    {"mode":"on-demand","phase":"editing","machine":"Office Mac","currentFiles":[],"queuedFiles":[],"lastError":"","updatedAt":"2026-09-02T01:02:03.456Z"}
+    """
+    try editingRuntimeJSON.write(
+        to: catalogDirectory.appendingPathComponent("runtime-status.json"),
+        atomically: true,
+        encoding: .utf8
+    )
+    let editingStatus = OrganizerStatusFile.read(from: library, now: statusTime)
+    try check(editingStatus.hasRuntimeStatus, "A current library editing command was treated as stale")
+    try check(editingStatus.phaseLabel == "Updating library with Codex", "The library editing label is incorrect")
+
     let onDemandIdleRuntimeJSON = """
     {"mode":"on-demand","phase":"idle","machine":"Office Mac","currentFiles":[],"queuedFiles":[],"lastError":"","updatedAt":"2026-09-02T01:02:03.456Z"}
     """
@@ -236,7 +255,9 @@ do {
         let seededRoot = temporaryDirectory.appendingPathComponent("seeded-library", isDirectory: true)
         _ = try LibraryLayout.prepareLibrary(at: seededRoot, bundle: appBundle)
         for relativePath in [
+            "Automation/PAPER_LIBRARY_EDITOR.md",
             "Automation/PAPER_ORGANIZER.md",
+            "Automation/library-command-schema.json",
             "Automation/paper-organizer.mjs",
         ] {
             try check(

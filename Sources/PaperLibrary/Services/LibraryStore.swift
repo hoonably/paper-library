@@ -6,6 +6,16 @@ private enum AutomationSetupResult {
     case failure(String)
 }
 
+private struct LibraryInstructionOutput: Decodable, Sendable {
+    let summary: String
+    let updatedCount: Int
+}
+
+private enum LibraryInstructionResult: Sendable {
+    case success(LibraryInstructionOutput)
+    case failure(String)
+}
+
 enum CodexCLIReadiness: Equatable, Sendable {
     case notChecked
     case checking
@@ -30,8 +40,11 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var libraryURL: URL?
     @Published private(set) var isLoading = false
     @Published private(set) var isSettingUpAutomation = false
+    @Published private(set) var isRunningLibraryCommand = false
     @Published private(set) var organizerStatus = OrganizerStatus.unavailable
     @Published private(set) var codexCLIReadiness = CodexCLIReadiness.notChecked
+    @Published private(set) var libraryCommandMessage: String?
+    @Published private(set) var libraryCommandError: String?
     @Published var isShowingAutomationSetup = false
     @Published var setupLanguage = "korean"
     @Published var errorMessage: String?
@@ -111,9 +124,51 @@ final class LibraryStore: ObservableObject {
             refreshOrganizerStatus()
             noticeMessage = setting == .language
                 ? "Language saved for newly processed papers. Existing summaries were left unchanged."
-                : "Automation \(setting.rawValue) saved. The assigned device will use it for the next paper."
+                : "Automation \(setting.rawValue) saved. The local organizer will use it for the next paper."
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func clearLibraryCommandFeedback() {
+        guard !isRunningLibraryCommand else { return }
+        libraryCommandMessage = nil
+        libraryCommandError = nil
+    }
+
+    func sendLibraryInstruction(_ instruction: String) {
+        let cleaned = instruction.trimmed
+        guard !cleaned.isEmpty, !isRunningLibraryCommand else { return }
+        guard isAutomationConfigured, let libraryURL else {
+            libraryCommandError = "Set up Paper Organizer before sending a command."
+            return
+        }
+
+        isRunningLibraryCommand = true
+        libraryCommandMessage = nil
+        libraryCommandError = nil
+        Task { @MainActor [weak self] in
+            let result = await Task.detached {
+                Self.runLibraryInstruction(cleaned, in: libraryURL)
+            }.value
+            guard let self else { return }
+            self.isRunningLibraryCommand = false
+            switch result {
+            case .success(let output):
+                do {
+                    try self.loadCatalog(from: libraryURL)
+                    self.refreshOrganizerStatus()
+                    let suffix = output.updatedCount == 0
+                        ? " No catalog changes were needed."
+                        : " Updated \(output.updatedCount) paper\(output.updatedCount == 1 ? "" : "s")."
+                    self.libraryCommandMessage = output.summary + suffix
+                } catch {
+                    self.libraryCommandError = error.localizedDescription
+                }
+            case .failure(let message):
+                self.refreshOrganizerStatus()
+                self.libraryCommandError = message
+            }
         }
     }
 
@@ -468,6 +523,84 @@ final class LibraryStore: ObservableObject {
                 return .failure(text.isEmpty ? "Paper Organizer could not start." : text)
             }
             return .success
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
+    nonisolated private static func runLibraryInstruction(
+        _ instruction: String,
+        in root: URL
+    ) -> LibraryInstructionResult {
+        let script = root
+            .appendingPathComponent(LibraryLayout.automationDirectoryName, isDirectory: true)
+            .appendingPathComponent("paper-organizer.mjs", isDirectory: false)
+        guard FileManager.default.fileExists(atPath: script.path) else {
+            return .failure("The app's automation files are missing. Reinstall Paper Library and try again.")
+        }
+        guard let node = findNodeExecutable() else {
+            return .failure("Paper Organizer needs Node.js 18 or newer. Install Node.js, then try again.")
+        }
+
+        let fileManager = FileManager.default
+        let temporaryDirectory = fileManager.temporaryDirectory
+            .appendingPathComponent("PaperLibraryCommand-\(UUID().uuidString)", isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+        defer { try? fileManager.removeItem(at: temporaryDirectory) }
+
+        let outputURL = temporaryDirectory.appendingPathComponent("output.json")
+        let errorURL = temporaryDirectory.appendingPathComponent("error.log")
+        guard fileManager.createFile(atPath: outputURL.path, contents: nil),
+              fileManager.createFile(atPath: errorURL.path, contents: nil)
+        else { return .failure("Paper Library could not prepare the command output.") }
+
+        do {
+            let outputHandle = try FileHandle(forWritingTo: outputURL)
+            let errorHandle = try FileHandle(forWritingTo: errorURL)
+            defer {
+                try? outputHandle.close()
+                try? errorHandle.close()
+            }
+
+            let process = Process()
+            process.executableURL = node
+            process.arguments = [script.path, "instruct", "--root", root.path]
+            var environment = ProcessInfo.processInfo.environment
+            let commonPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+            environment["PATH"] = (commonPaths + [environment["PATH"] ?? ""])
+                .joined(separator: ":")
+            process.environment = environment
+            let input = Pipe()
+            process.standardInput = input
+            process.standardOutput = outputHandle
+            process.standardError = errorHandle
+
+            try process.run()
+            try input.fileHandleForWriting.write(contentsOf: Data(instruction.utf8))
+            try input.fileHandleForWriting.close()
+            process.waitUntilExit()
+            try outputHandle.synchronize()
+            try errorHandle.synchronize()
+
+            guard process.terminationStatus == 0 else {
+                let rawError = (try? String(contentsOf: errorURL, encoding: .utf8))?.trimmed ?? ""
+                let errorLine = rawError
+                    .split(separator: "\n")
+                    .reversed()
+                    .first { $0.hasPrefix("Error: ") }
+                    .map { String($0.dropFirst("Error: ".count)) }
+                let message = errorLine ?? (rawError.isEmpty
+                    ? "Codex could not update the library."
+                    : String(rawError.suffix(4_000)))
+                return .failure(message)
+            }
+            let data = try Data(contentsOf: outputURL)
+            let output = try JSONDecoder().decode(LibraryInstructionOutput.self, from: data)
+            return .success(output)
         } catch {
             return .failure(error.localizedDescription)
         }

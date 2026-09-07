@@ -31,7 +31,6 @@ struct ContentView: View {
     @State private var presentationFilter = ""
     @State private var sort: CatalogSort = .dateAdded
     @State private var editingPaper: Paper?
-    @State private var isSidebarVisible = true
 
     private var venues: [String] {
         unique(store.papers.map(\.venue))
@@ -203,12 +202,6 @@ struct ContentView: View {
                 try? await Task.sleep(for: .seconds(2))
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .togglePaperLibrarySidebar)) { _ in
-            guard store.hasLibrary else { return }
-            withAnimation {
-                isSidebarVisible.toggle()
-            }
-        }
     }
 
     private var storageUnavailableView: some View {
@@ -226,10 +219,8 @@ struct ContentView: View {
             catalogControls
             Divider()
             HSplitView {
-                if isSidebarVisible {
-                    sidebar
-                        .frame(minWidth: 190, idealWidth: 230, maxWidth: 290, maxHeight: .infinity)
-                }
+                sidebar
+                    .frame(minWidth: 190, idealWidth: 230, maxWidth: 290, maxHeight: .infinity)
                 paperList
                     .frame(minWidth: 340, idealWidth: 430, maxWidth: 560, maxHeight: .infinity)
                 Group {

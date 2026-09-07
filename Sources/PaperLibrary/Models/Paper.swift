@@ -68,7 +68,7 @@ struct Paper: Identifiable, Codable, Hashable {
         let required: [(String, String)] = [
             ("Category", category), ("Venue", venue), ("Year", year),
             ("Presentation", presentation), ("Title", title), ("Authors", authors),
-            ("Affiliation", affiliation), ("Summary", summary), ("Novelty", novelty),
+            ("Summary", summary), ("Novelty", novelty),
             ("Date added", addedAt), ("PDF path", file),
         ]
         if let missing = required.first(where: { $0.1.trimmed.isEmpty }) {

@@ -1,7 +1,9 @@
+import AppKit
 import SwiftUI
 
 struct OrganizerStatusHeader: View {
     @EnvironmentObject private var store: LibraryStore
+    @State private var isShowingLibraryCommand = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -68,6 +70,27 @@ struct OrganizerStatusHeader: View {
                 recommendedValue: nil
             ) { store.updateOrganizerSetting(.language, to: $0) }
             .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
+
+            Button {
+                isShowingLibraryCommand.toggle()
+            } label: {
+                Image(systemName: "message.fill")
+                    .font(.callout.weight(.semibold))
+                    .frame(width: 34, height: 34)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(.separator.opacity(0.55), lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
+            .help("Ask Codex to correct metadata or reorganize papers.")
+            .accessibilityLabel("Edit library with Codex")
+            .popover(isPresented: $isShowingLibraryCommand, arrowEdge: .top) {
+                LibraryCommandPopover()
+                    .environmentObject(store)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -80,22 +103,16 @@ struct OrganizerStatusHeader: View {
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
                 .shadow(color: statusColor.opacity(0.45), radius: 4)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(store.organizerStatus.automationDeviceName)
-                    .font(.callout.weight(.semibold))
-                    .lineLimit(1)
-                Text(store.organizerStatus.phaseLabel)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            Text(store.organizerStatus.phaseLabel)
+                .font(.callout.weight(.semibold))
+                .lineLimit(1)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
         .help(store.organizerStatus.detailText)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Automation device \(store.organizerStatus.automationDeviceName), \(store.organizerStatus.phaseLabel)")
+        .accessibilityLabel("Organizer status: \(store.organizerStatus.phaseLabel)")
     }
 
     private var statusColor: Color {
@@ -103,7 +120,7 @@ struct OrganizerStatusHeader: View {
         switch store.organizerStatus.phase {
         case "error": return .red
         case "starting", "checking", "queued": return .orange
-        case "processing": return .blue
+        case "processing", "editing": return .blue
         default: return .green
         }
     }
@@ -127,6 +144,177 @@ struct OrganizerStatusHeader: View {
         case "chinese": "Chinese"
         case "english": "English"
         default: value.capitalized
+        }
+    }
+}
+
+private struct LibraryCommandPopover: View {
+    @EnvironmentObject private var store: LibraryStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var instruction = ""
+    @State private var hasInteractedWithEditor = false
+    @State private var focusRequest = 0
+
+    private var canSend: Bool {
+        !instruction.trimmed.isEmpty && !store.isRunningLibraryCommand
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "message.fill")
+                    .foregroundStyle(.tint)
+                Text("Edit Library with Codex")
+                    .font(.headline)
+            }
+
+            Text("Describe a metadata correction or how papers should be reorganized. Write in any language.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ZStack(alignment: .topLeading) {
+                LibraryCommandTextEditor(text: $instruction, focusRequest: focusRequest) {
+                    hasInteractedWithEditor = true
+                }
+                if instruction.isEmpty && !hasInteractedWithEditor {
+                    Text("For example: This paper was published at ICML, not arXiv.\nCreate a Speculative Decoding subcategory and move the relevant papers into it.")
+                        .font(.body)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .padding(11)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            hasInteractedWithEditor = true
+                            focusRequest += 1
+                        }
+                }
+            }
+                .frame(height: 112)
+                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 9))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9)
+                        .stroke(.separator.opacity(0.55), lineWidth: 1)
+                }
+
+            if store.isRunningLibraryCommand {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Codex is reviewing the library…")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let message = store.libraryCommandMessage {
+                ScrollView {
+                    Label(message, systemImage: "checkmark.circle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.green)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxHeight: 120)
+            } else if let error = store.libraryCommandError {
+                ScrollView {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxHeight: 120)
+            }
+
+            HStack {
+                Button(store.isRunningLibraryCommand ? "Close" : "Cancel") {
+                    dismiss()
+                }
+                Spacer()
+                Button("Send") {
+                    store.sendLibraryInstruction(instruction)
+                }
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(!canSend)
+            }
+        }
+        .padding(16)
+        .frame(width: 420)
+        .onAppear {
+            store.clearLibraryCommandFeedback()
+            hasInteractedWithEditor = !instruction.isEmpty
+        }
+    }
+}
+
+private struct LibraryCommandTextEditor: NSViewRepresentable {
+    @Binding var text: String
+    let focusRequest: Int
+    let onInteraction: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+
+        let textView = InteractionTextView()
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.allowsUndo = false
+        textView.drawsBackground = false
+        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        textView.textColor = .labelColor
+        textView.insertionPointColor = .labelColor
+        textView.textContainerInset = NSSize(width: 7, height: 9)
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.onInteraction = onInteraction
+        scrollView.documentView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? InteractionTextView else { return }
+        textView.onInteraction = onInteraction
+        if textView.string != text {
+            textView.string = text
+        }
+        guard context.coordinator.lastFocusRequest != focusRequest else { return }
+        context.coordinator.lastFocusRequest = focusRequest
+        DispatchQueue.main.async { [weak textView] in
+            guard let textView else { return }
+            textView.window?.makeFirstResponder(textView)
+            textView.setSelectedRange(NSRange(location: textView.string.utf16.count, length: 0))
+            textView.scrollRangeToVisible(textView.selectedRange())
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        @Binding private var text: String
+        var lastFocusRequest = 0
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text = textView.string
+        }
+    }
+
+    final class InteractionTextView: NSTextView {
+        var onInteraction: (() -> Void)?
+
+        override var undoManager: UndoManager? { nil }
+
+        override func mouseDown(with event: NSEvent) {
+            super.mouseDown(with: event)
+            DispatchQueue.main.async { [weak self] in
+                self?.onInteraction?()
+            }
         }
     }
 }
@@ -177,7 +365,7 @@ private struct SettingMenu: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .layoutPriority(1)
-        .help("Applies to papers processed after this setting is synchronized to the automation device.")
+        .help("Applies to papers processed after this setting is saved.")
     }
 
     private func optionName(_ choice: String) -> String {

@@ -63,7 +63,9 @@ if [[ "$service_name" != "Move to Paper Library" ]]; then
 fi
 
 for bundled_resource in \
+  "LibrarySeed/Automation/PAPER_LIBRARY_EDITOR.md" \
   "LibrarySeed/Automation/PAPER_ORGANIZER.md" \
+  "LibrarySeed/Automation/library-command-schema.json" \
   "LibrarySeed/Automation/paper-organizer.mjs"; do
   if [[ ! -f "$app_bundle/Contents/Resources/$bundled_resource" ]]; then
     print -u2 "The app is missing $bundled_resource."

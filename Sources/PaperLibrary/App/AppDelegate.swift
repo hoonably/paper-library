@@ -1,12 +1,7 @@
 import AppKit
 
-extension Notification.Name {
-    static let togglePaperLibrarySidebar = Notification.Name("TogglePaperLibrarySidebar")
-}
-
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let titlebarAccessoryID = NSUserInterfaceItemIdentifier("PaperLibraryFixedTitlebarControls")
     private weak var mainWindow: NSWindow?
     private var launchedForBackgroundAction = false
 
@@ -73,52 +68,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = ""
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = false
-
-        guard let closeButton = window.standardWindowButton(.closeButton),
-              let zoomButton = window.standardWindowButton(.zoomButton),
-              let titlebarView = closeButton.superview,
-              !titlebarView.subviews.contains(where: { $0.identifier == titlebarAccessoryID })
-        else { return }
-
-        let sidebarButton = NSButton(
-            image: NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: "Toggle Sidebar") ?? NSImage(),
-            target: self,
-            action: #selector(toggleSidebar(_:))
-        )
-        sidebarButton.bezelStyle = .texturedRounded
-        sidebarButton.controlSize = .regular
-        sidebarButton.imagePosition = .imageOnly
-        sidebarButton.imageScaling = .scaleProportionallyDown
-        sidebarButton.toolTip = "Show or hide the sidebar"
-        sidebarButton.setAccessibilityLabel("Toggle Sidebar")
-        sidebarButton.translatesAutoresizingMaskIntoConstraints = false
-
-        let title = NSTextField(labelWithString: "Paper Library")
-        title.font = .systemFont(ofSize: 14, weight: .semibold)
-        title.textColor = .labelColor
-        title.setContentHuggingPriority(.required, for: .horizontal)
-        title.setContentCompressionResistancePriority(.required, for: .horizontal)
-
-        let controls = NSStackView(views: [sidebarButton, title])
-        controls.identifier = titlebarAccessoryID
-        controls.orientation = .horizontal
-        controls.alignment = .centerY
-        controls.spacing = 9
-        controls.translatesAutoresizingMaskIntoConstraints = false
-        controls.setContentHuggingPriority(.required, for: .horizontal)
-        titlebarView.addSubview(controls)
-        NSLayoutConstraint.activate([
-            sidebarButton.widthAnchor.constraint(equalToConstant: 30),
-            sidebarButton.heightAnchor.constraint(equalToConstant: 24),
-            controls.leadingAnchor.constraint(equalTo: zoomButton.trailingAnchor, constant: 10),
-            controls.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
-            controls.widthAnchor.constraint(equalToConstant: 148),
-            controls.heightAnchor.constraint(equalToConstant: 26),
-        ])
-    }
-
-    @objc private func toggleSidebar(_ sender: Any?) {
-        NotificationCenter.default.post(name: .togglePaperLibrarySidebar, object: nil)
     }
 
     @objc(moveToPaperLibrary:userData:error:)

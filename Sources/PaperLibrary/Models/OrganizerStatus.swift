@@ -117,9 +117,10 @@ struct OrganizerStatus: Equatable {
         case "checking": "Checking for new PDFs"
         case "queued": "Waiting to process"
         case "processing": "Processing with Codex"
+        case "editing": "Updating library with Codex"
         case "idle": "Ready for Finder"
         case "error": "Processing error"
-        case "remote": "Using remote automation"
+        case "remote": "Organizer ready"
         case "offline": "Organizer unavailable"
         default: "Organizer unavailable"
         }
@@ -169,7 +170,7 @@ enum OrganizerStatusFile {
             else { return false }
             return now.timeIntervalSince(updatedAt) <= staleAfter
         } ?? false
-        let activePhases = ["starting", "checking", "queued", "processing"]
+        let activePhases = ["starting", "checking", "queued", "processing", "editing"]
         let runtimeIsCurrent = runtime?.mode == "on-demand" && !activePhases.contains(runtime?.phase ?? "")
             ? runtime != nil
             : runtimeIsFresh
@@ -196,7 +197,7 @@ enum OrganizerStatusFile {
         } else if configuredDevice == nil {
             connectionError = "Paper Organizer has not been configured for this library."
         } else if runtime == nil {
-            connectionError = "No organizer status has been received from the automation device yet."
+            connectionError = "The local organizer has not reported its status yet."
         } else {
             connectionError = "No recent processing status was received. Run automation setup again if the organizer was interrupted."
         }

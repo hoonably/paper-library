@@ -3,9 +3,9 @@ set -euo pipefail
 
 repository_root="$(cd "$(dirname "$0")/.." && pwd)"
 archive="${1:-$repository_root/dist/Paper-Library.zip}"
-release_notes="${2:-}"
 private_key_file="${SPARKLE_PRIVATE_KEY_FILE:-$HOME/Library/Application Support/Paper Library Development/sparkle-private-key}"
 appcast_output="${APPCAST_OUTPUT:-$repository_root/appcast.xml}"
+full_release_notes_url="${FULL_RELEASE_NOTES_URL:-https://github.com/hoonably/paper-library/releases}"
 temporary_directory="$(mktemp -d)"
 trap 'rm -rf "$temporary_directory"' EXIT
 
@@ -62,30 +62,20 @@ version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_
 build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_bundle/Contents/Info.plist")"
 cp "$archive" "$updates_directory/Paper-Library.zip"
 cp "$appcast_output" "$updates_directory/appcast.xml"
-if [[ -n "$release_notes" ]]; then
-  if [[ ! -f "$release_notes" ]]; then
-    print -u2 "Release notes not found: $release_notes"
-    exit 66
-  fi
-  cp "$release_notes" "$updates_directory/Paper-Library.md"
-fi
 
 "$generate_appcast" \
   --ed-key-file "$private_key_file" \
   --download-url-prefix "https://github.com/hoonably/paper-library/releases/download/v$version/" \
-  --release-notes-url-prefix "https://github.com/hoonably/paper-library/releases/download/v$version/" \
+  --full-release-notes-url "$full_release_notes_url" \
   --link "https://github.com/hoonably/paper-library/releases/tag/v$version" \
   --maximum-versions 5 \
   --maximum-deltas 0 \
   -o "$updates_directory/appcast.xml" \
   "$updates_directory"
 
-if [[ -n "$release_notes" ]]; then
-  cp "$updates_directory/Paper-Library.md" "$release_notes"
-fi
-
 xmllint --noout "$updates_directory/appcast.xml"
 if ! grep -q "<sparkle:version>$build_number</sparkle:version>" "$updates_directory/appcast.xml" ||
+   ! grep -Fq "<sparkle:fullReleaseNotesLink>$full_release_notes_url</sparkle:fullReleaseNotesLink>" "$updates_directory/appcast.xml" ||
    ! grep -q 'sparkle:edSignature=' "$updates_directory/appcast.xml" ||
    ! grep -q '<!-- sparkle-signatures:' "$updates_directory/appcast.xml"; then
   print -u2 "The generated appcast is missing the expected version or EdDSA signatures."
