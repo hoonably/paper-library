@@ -248,6 +248,28 @@ do {
     let preservedSettings = try JSONSerialization.jsonObject(with: Data(contentsOf: settingsURL)) as? [String: Any]
     try check((preservedSettings?["automationDevice"] as? [String: Any])?["name"] as? String == "Office Mac", "Automation owner was lost while saving settings")
 
+    try check(OrganizerStatus.unavailable.model == "gpt-6-luna", "The recommended model is not Luna")
+    try check(OrganizerStatus.unavailable.reasoning == "xhigh", "The recommended reasoning is not Extra High")
+    let modelCatalog = CodexModelCatalog(version: 1, codexPath: "/test/codex", fetchedAt: "2026-09-23T00:00:00Z", models: [
+        CodexModel(id: "gpt-6-luna", displayName: "GPT-6 Luna", reasoningEfforts: ["low", "high", "xhigh", "max"], defaultReasoningEffort: "high"),
+        CodexModel(id: "future/model-v2", displayName: "Future Model", reasoningEfforts: ["none", "ultra"], defaultReasoningEffort: "none"),
+    ])
+    try modelCatalog.save(in: library)
+    try check(CodexModelCatalog.read(from: library) == modelCatalog, "The model catalog cache did not round-trip")
+    try check(OrganizerStatusFile.read(from: library).model == "gpt-5.6-sol", "Caching a catalog changed the selected model")
+    try check(modelCatalog.models[0].compatibleReasoning(preferred: "xhigh") == "xhigh", "Supported reasoning was not preserved")
+    try check(modelCatalog.models[1].compatibleReasoning(preferred: "xhigh") == "none", "Unsupported reasoning was not replaced with a compatible default")
+    try OrganizerStatusFile.update([.model: "future/model-v2", .reasoning: "ultra"], in: library)
+    let futureStatus = OrganizerStatusFile.read(from: library)
+    try check(futureStatus.model == "future/model-v2" && futureStatus.reasoning == "ultra", "New model IDs or reasoning levels require an app update")
+    do {
+        try OrganizerStatusFile.update([.model: "--unsafe", .reasoning: "high"], in: library)
+        throw CheckFailure.failed("An invalid model ID was accepted")
+    } catch is OrganizerStatusError {}
+    try check(OrganizerStatusFile.read(from: library).reasoning == "ultra", "A rejected change partially overwrote settings")
+    try "{}".write(to: catalogDirectory.appendingPathComponent("codex-models.json"), atomically: true, encoding: .utf8)
+    try check(CodexModelCatalog.read(from: library) == nil, "A corrupt cache was accepted")
+
     if let bundlePath = ProcessInfo.processInfo.environment["PAPER_LIBRARY_TEST_APP_BUNDLE"] {
         guard let appBundle = Bundle(path: bundlePath) else {
             throw CheckFailure.failed("The test app bundle could not be opened")
@@ -258,6 +280,7 @@ do {
             "Automation/PAPER_LIBRARY_EDITOR.md",
             "Automation/PAPER_ORGANIZER.md",
             "Automation/library-command-schema.json",
+            "Automation/codex-models.mjs",
             "Automation/paper-organizer.mjs",
         ] {
             try check(

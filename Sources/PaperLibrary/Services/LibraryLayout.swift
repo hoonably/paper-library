@@ -87,6 +87,7 @@ enum LibraryLayout {
             "Automation/PAPER_ORGANIZER.md",
             "Automation/library-command-schema.json",
             "Automation/paper-organizer.mjs",
+            "Automation/codex-models.mjs",
         ]
         for relativePath in relativeFiles {
             let source = seedRoot.appendingPathComponent(relativePath, isDirectory: false)

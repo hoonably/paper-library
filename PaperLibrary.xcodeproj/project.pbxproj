@@ -25,6 +25,8 @@
 		A10000000000000000000018 /* AutomationSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* AutomationSetupView.swift */; };
 		A10000000000000000000019 /* UpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* UpdateController.swift */; };
 		A10000000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C20000000000000000000001 /* Sparkle */; };
+		A10000000000000000000021 /* CodexModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* CodexModelCatalog.swift */; };
+		A10000000000000000000022 /* CodexModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* CodexModelService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +50,8 @@
 		A20000000000000000000019 /* LibraryLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LibraryLayout.swift; sourceTree = "<group>"; };
 		A20000000000000000000021 /* AutomationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AutomationSetupView.swift; sourceTree = "<group>"; };
 		A20000000000000000000022 /* UpdateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/UpdateController.swift; sourceTree = "<group>"; };
+		A20000000000000000000023 /* CodexModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/CodexModelCatalog.swift; sourceTree = "<group>"; };
+		A20000000000000000000024 /* CodexModelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CodexModelService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +83,8 @@
 				A20000000000000000000022 /* UpdateController.swift */,
 				A20000000000000000000002 /* Paper.swift */,
 				A20000000000000000000016 /* OrganizerStatus.swift */,
+				A20000000000000000000023 /* CodexModelCatalog.swift */,
+				A20000000000000000000024 /* CodexModelService.swift */,
 				A20000000000000000000003 /* CSVCodec.swift */,
 				A20000000000000000000015 /* IncomingPDFMover.swift */,
 				A20000000000000000000019 /* LibraryLayout.swift */,
@@ -193,6 +199,8 @@
 				A10000000000000000000019 /* UpdateController.swift in Sources */,
 				A10000000000000000000002 /* Paper.swift in Sources */,
 				A10000000000000000000013 /* OrganizerStatus.swift in Sources */,
+				A10000000000000000000021 /* CodexModelCatalog.swift in Sources */,
+				A10000000000000000000022 /* CodexModelService.swift in Sources */,
 				A10000000000000000000003 /* CSVCodec.swift in Sources */,
 				A10000000000000000000012 /* IncomingPDFMover.swift in Sources */,
 				A10000000000000000000016 /* LibraryLayout.swift in Sources */,
@@ -319,7 +327,7 @@
 				CODE_SIGN_ENTITLEMENTS = PaperLibrary/PaperLibrary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -328,7 +336,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.3.2;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoonably.PaperLibrary;
 				PRODUCT_NAME = "Paper Library";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -344,7 +352,7 @@
 				CODE_SIGN_ENTITLEMENTS = PaperLibrary/PaperLibrary.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -353,7 +361,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.3.2;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoonably.PaperLibrary;
 				PRODUCT_NAME = "Paper Library";
 				SWIFT_EMIT_LOC_STRINGS = YES;

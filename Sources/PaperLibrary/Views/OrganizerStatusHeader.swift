@@ -10,6 +10,7 @@ struct OrganizerStatusHeader: View {
             Label("Paper Library", systemImage: "books.vertical.fill")
                 .font(.title3.weight(.semibold))
                 .lineLimit(1)
+                .overlay(WindowDragArea())
 
             if store.isAutomationConfigured {
                 statusBadge
@@ -43,22 +44,17 @@ struct OrganizerStatusHeader: View {
             }
 
             Spacer(minLength: 8)
+                .overlay(WindowDragArea())
 
-            SettingMenu(
-                title: "MODEL",
-                value: store.organizerStatus.model,
-                choices: OrganizerSetting.model.allowedValues,
-                displayName: modelName,
-                recommendedValue: "gpt-5.6-terra"
-            ) { store.updateOrganizerSetting(.model, to: $0) }
+            ModelSettingMenu()
             .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
 
             SettingMenu(
                 title: "REASONING",
                 value: store.organizerStatus.reasoning,
-                choices: OrganizerSetting.reasoning.allowedValues,
+                choices: store.availableReasoningEfforts,
                 displayName: reasoningName,
-                recommendedValue: "medium"
+                recommendedValue: OrganizerRecommendation.reasoning
             ) { store.updateOrganizerSetting(.reasoning, to: $0) }
             .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
 
@@ -113,6 +109,7 @@ struct OrganizerStatusHeader: View {
         .help(store.organizerStatus.detailText)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Organizer status: \(store.organizerStatus.phaseLabel)")
+        .overlay(WindowDragArea())
     }
 
     private var statusColor: Color {
@@ -125,17 +122,8 @@ struct OrganizerStatusHeader: View {
         }
     }
 
-    private func modelName(_ value: String) -> String {
-        switch value {
-        case "gpt-5.6-sol": "GPT-5.6 Sol"
-        case "gpt-5.6-terra": "GPT-5.6 Terra"
-        case "gpt-5.6-luna": "GPT-5.6 Luna"
-        default: value
-        }
-    }
-
     private func reasoningName(_ value: String) -> String {
-        value == "xhigh" ? "XHigh" : value.capitalized
+        value == "xhigh" ? "Extra High" : value.capitalized
     }
 
     private func languageName(_ value: String) -> String {
@@ -144,6 +132,19 @@ struct OrganizerStatusHeader: View {
         case "chinese": "Chinese"
         case "english": "English"
         default: value.capitalized
+        }
+    }
+}
+
+// AppKit's titlebar drag does not extend into the SwiftUI header. Keep the
+// drag target on non-interactive regions so the setting menus remain clickable.
+private struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> DragView { DragView() }
+    func updateNSView(_ view: DragView, context: Context) {}
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
         }
     }
 }
@@ -319,6 +320,116 @@ private struct LibraryCommandTextEditor: NSViewRepresentable {
     }
 }
 
+private struct ModelSettingMenu: View {
+    @EnvironmentObject private var store: LibraryStore
+    @State private var isPresented = false
+
+    private func optionName(_ id: String) -> String {
+        store.modelDisplayName(id) + (id == OrganizerRecommendation.model ? " ★" : "")
+    }
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            SettingMenuLabel(title: "MODEL", value: optionName(store.organizerStatus.model))
+        }
+        .buttonStyle(.plain)
+        .layoutPriority(1)
+        .help("Models refresh when the app launches or when you press Refresh. ★ is the Paper Library recommendation.")
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Codex models").font(.headline)
+                    Spacer()
+                    if store.isRefreshingModels {
+                        ProgressView().controlSize(.small)
+                            .accessibilityLabel("Refreshing models")
+                    } else {
+                        Button { store.refreshModels() } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Refresh model list")
+                        .accessibilityLabel("Refresh model list")
+                    }
+                }
+                let models = store.modelCatalog?.models ?? []
+                if !models.isEmpty {
+                    ScrollView {
+                        VStack(spacing: 2) {
+                            ForEach(models) { model in
+                                Button {
+                                    store.updateOrganizerSetting(.model, to: model.id)
+                                    isPresented = false
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "checkmark")
+                                            .opacity(model.id == store.organizerStatus.model ? 1 : 0)
+                                        Text(optionName(model.id))
+                                        Spacer(minLength: 0)
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                    }
+                    .frame(height: min(CGFloat(models.count) * 30, 300))
+                }
+                if store.modelCatalog?.model(withID: store.organizerStatus.model) == nil {
+                    Text("Current: \(optionName(store.organizerStatus.model))\n\(models.isEmpty ? "Waiting for the CLI model list." : "Not returned by this CLI. Update Codex CLI or select another model.")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let error = store.modelCatalogError {
+                    Text(error + (models.isEmpty ? "" : " Showing the saved list."))
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Divider()
+                Text("★ Paper Library recommendation")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help(store.modelCatalog?.codexPath ?? "Model availability depends on your Codex CLI and account.")
+            }
+            .padding(14)
+            .frame(width: 310)
+        }
+    }
+}
+
+private struct SettingMenuLabel: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Text(title)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+            Image(systemName: "chevron.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 9)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.separator.opacity(0.55), lineWidth: 1)
+        }
+    }
+}
+
 private struct SettingMenu: View {
     let title: String
     let value: String
@@ -341,26 +452,7 @@ private struct SettingMenu: View {
                 }
             }
         } label: {
-            HStack(spacing: 9) {
-                Text(title)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Text(optionName(value))
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 9)
-            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(.separator.opacity(0.55), lineWidth: 1)
-            }
+            SettingMenuLabel(title: title, value: optionName(value))
         }
         .menuStyle(.button)
         .buttonStyle(.plain)

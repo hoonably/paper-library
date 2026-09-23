@@ -2,24 +2,15 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private weak var mainWindow: NSWindow?
-    private var launchedForBackgroundAction = false
+    private var mainWindow: NSWindow?
+    private var isPerformingBackgroundService = false
+    private var hasStartedForegroundSession = false
+    private var backgroundTermination: DispatchWorkItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let isDefaultLaunch = (notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? NSNumber)?.boolValue
-        launchedForBackgroundAction = isDefaultLaunch == false
-        if launchedForBackgroundAction {
-            NSApp.setActivationPolicy(.accessory)
-            hideWindowsForBackgroundAction()
-        }
-
-        let store = LibraryStore.shared
-        store.prepareManagedLibraryIfNeeded()
-        if !launchedForBackgroundAction {
-            store.migrateLegacyAutomationIfNeeded()
-            UpdateController.shared.start()
-            store.presentAutomationSetupIfNeeded()
-        }
+        // A non-default launch also includes restored windows, not just Services.
+        // Enter background service mode only when the Finder service is invoked.
+        LibraryStore.shared.prepareManagedLibraryIfNeeded()
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
         NotificationCenter.default.addObserver(
@@ -30,20 +21,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if self.launchedForBackgroundAction {
+            if self.isPerformingBackgroundService {
                 self.hideWindowsForBackgroundAction()
             } else {
                 NSApp.windows.forEach { self.configureTitleBar(of: $0) }
+                if NSApp.isActive { self.beginForegroundSession() }
             }
         }
+        // macOS can launch a SwiftUI WindowGroup without creating its first window.
+        // A Finder service must stay windowless, but a normal launch needs a library window.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self, !self.isPerformingBackgroundService, self.mainWindow == nil,
+                  !NSApp.windows.contains(where: { self.isLibraryWindow($0) && $0.isVisible })
+            else { return }
+            self.ensureLibraryWindowVisible()
+        }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        beginForegroundSession()
+        ensureLibraryWindowVisible()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        beginForegroundSession()
+        ensureLibraryWindowVisible()
+        return false
+    }
+
+    private func ensureLibraryWindowVisible() {
+        guard !isPerformingBackgroundService else { return }
+        let window = mainWindow ?? NSApp.windows.first(where: isLibraryWindow)
+            ?? LibraryWindowFactory.make(store: LibraryStore.shared)
+        mainWindow = window
+        configureTitleBar(of: window)
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        if !window.isVisible { window.makeKeyAndOrderFront(nil) }
+    }
+
+    private func beginForegroundSession() {
+        backgroundTermination?.cancel()
+        backgroundTermination = nil
+        isPerformingBackgroundService = false
+        NSApp.setActivationPolicy(.regular)
+        guard !hasStartedForegroundSession else { return }
+        hasStartedForegroundSession = true
+        let store = LibraryStore.shared
+        store.prepareManagedLibraryIfNeeded()
+        store.migrateLegacyAutomationIfNeeded()
+        if store.isAutomationConfigured { store.refreshModels() }
+        UpdateController.shared.start()
+        store.presentAutomationSetupIfNeeded()
     }
 
     @objc private func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
-        if launchedForBackgroundAction {
-            window.orderOut(nil)
-            return
-        }
         configureTitleBar(of: window)
     }
 
@@ -53,14 +85,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func finishBackgroundAction(if needed: Bool) {
         guard needed else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        backgroundTermination?.cancel()
+        let termination = DispatchWorkItem { [weak self] in
+            guard self?.isPerformingBackgroundService == true, !NSApp.isActive else { return }
             NSApp.terminate(nil)
         }
+        backgroundTermination = termination
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: termination)
+    }
+
+    private func isLibraryWindow(_ window: NSWindow) -> Bool {
+        window.level == .normal && window.styleMask.contains(.titled) && !(window is NSPanel)
     }
 
     private func configureTitleBar(of window: NSWindow) {
         if mainWindow == nil {
-            guard window.level == .normal, window.styleMask.contains(.titled) else { return }
+            guard isLibraryWindow(window) else { return }
             mainWindow = window
         }
         guard window === mainWindow else { return }
@@ -68,6 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = ""
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = false
+        window.isMovable = true
     }
 
     @objc(moveToPaperLibrary:userData:error:)
@@ -76,10 +117,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         userData: String?,
         error errorPointer: AutoreleasingUnsafeMutablePointer<NSString?>
     ) {
-        let hasVisibleWindow = NSApp.windows.contains { $0.isVisible }
-        let shouldTerminateAfterService = launchedForBackgroundAction || !hasVisibleWindow
+        let hasVisibleWindow = NSApp.windows.contains {
+            isLibraryWindow($0) && ($0.isVisible || $0.isMiniaturized)
+        }
+        let shouldTerminateAfterService = !NSApp.isActive && (!hasStartedForegroundSession || !hasVisibleWindow)
         if shouldTerminateAfterService {
-            launchedForBackgroundAction = true
+            isPerformingBackgroundService = true
             NSApp.setActivationPolicy(.accessory)
             hideWindowsForBackgroundAction()
         }

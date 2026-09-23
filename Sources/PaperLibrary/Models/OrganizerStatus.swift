@@ -75,9 +75,17 @@ enum OrganizerSetting: String {
 
     var allowedValues: [String] {
         switch self {
-        case .model: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]
-        case .reasoning: ["low", "medium", "high", "xhigh"]
+        case .model: [OrganizerRecommendation.model]
+        case .reasoning: [OrganizerRecommendation.reasoning]
         case .language: ["english", "korean", "chinese"]
+        }
+    }
+
+    func accepts(_ value: String) -> Bool {
+        switch self {
+        case .model: CodexModel.isValidID(value)
+        case .reasoning: CodexModel.isValidReasoning(value)
+        case .language: allowedValues.contains(value)
         }
     }
 }
@@ -100,8 +108,8 @@ struct OrganizerStatus: Equatable {
         hasRuntimeStatus: false,
         phase: "offline",
         automationDeviceName: "Automation not configured",
-        model: "gpt-5.6-terra",
-        reasoning: "medium",
+        model: OrganizerRecommendation.model,
+        reasoning: OrganizerRecommendation.reasoning,
         language: "korean",
         activeFiles: [],
         queuedFiles: [],
@@ -206,8 +214,8 @@ enum OrganizerStatusFile {
             hasRuntimeStatus: runtime != nil && runtimeIsCurrent,
             phase: runtimeIsCurrent ? runtime?.phase ?? "offline" : "offline",
             automationDeviceName: configuredDevice?.name ?? runtime?.machine ?? "Automation not configured",
-            model: settings?.model ?? runtime?.configuredModel ?? runtime?.model ?? "gpt-5.6-terra",
-            reasoning: settings?.reasoning ?? runtime?.configuredReasoning ?? runtime?.reasoning ?? "medium",
+            model: settings?.model ?? runtime?.configuredModel ?? runtime?.model ?? OrganizerRecommendation.model,
+            reasoning: settings?.reasoning ?? runtime?.configuredReasoning ?? runtime?.reasoning ?? OrganizerRecommendation.reasoning,
             language: settings?.language ?? runtime?.configuredLanguage ?? runtime?.language ?? "korean",
             activeFiles: runtimeIsCurrent ? activeFiles : [],
             queuedFiles: runtimeIsCurrent ? runtime?.queuedFiles ?? [] : [],
@@ -219,7 +227,12 @@ enum OrganizerStatusFile {
     }
 
     static func update(_ setting: OrganizerSetting, value: String, in root: URL) throws {
-        guard setting.allowedValues.contains(value) else {
+        try update([setting: value], in: root)
+    }
+
+    // Save a model and its compatible reasoning together, so a worker never reads a mixed pair.
+    static func update(_ values: [OrganizerSetting: String], in root: URL) throws {
+        for (setting, value) in values where !setting.accepts(value) {
             throw OrganizerStatusError.unsupportedValue(setting: setting.rawValue, value: value)
         }
 
@@ -236,9 +249,9 @@ enum OrganizerStatusFile {
             ])
         }
 
-        object[setting.rawValue] = value
+        for (setting, value) in values { object[setting.rawValue] = value }
         object["updatedAt"] = ISO8601DateFormatter().string(from: Date())
-        if setting == .language {
+        if values[.language] != nil {
             // Native-app changes apply only to subsequently processed papers.
             object["catalogTranslation"] = NSNull()
         }

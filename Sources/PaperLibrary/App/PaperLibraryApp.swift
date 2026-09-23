@@ -45,3 +45,21 @@ struct PaperLibraryApp: App {
         }
     }
 }
+
+@MainActor
+enum LibraryWindowFactory {
+    static func make(store: LibraryStore) -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1280, height: 780),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(rootView: ContentView()
+            .environmentObject(store)
+            .frame(minWidth: 980, minHeight: 640))
+        window.isReleasedWhenClosed = false
+        window.center()
+        return window
+    }
+}

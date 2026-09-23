@@ -43,6 +43,9 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var isRunningLibraryCommand = false
     @Published private(set) var organizerStatus = OrganizerStatus.unavailable
     @Published private(set) var codexCLIReadiness = CodexCLIReadiness.notChecked
+    @Published private(set) var modelCatalog: CodexModelCatalog?
+    @Published private(set) var isRefreshingModels = false
+    @Published private(set) var modelCatalogError: String?
     @Published private(set) var libraryCommandMessage: String?
     @Published private(set) var libraryCommandError: String?
     @Published var isShowingAutomationSetup = false
@@ -83,6 +86,7 @@ final class LibraryStore: ObservableObject {
             libraryURL = root
             papers = try readCatalog(at: root)
             organizerStatus = OrganizerStatusFile.read(from: root)
+            modelCatalog = CodexModelCatalog.read(from: root)
             setupLanguage = organizerStatus.language
         } catch {
             libraryURL = nil
@@ -119,7 +123,19 @@ final class LibraryStore: ObservableObject {
     func updateOrganizerSetting(_ setting: OrganizerSetting, to value: String) {
         guard let libraryURL else { return }
         do {
-            try OrganizerStatusFile.update(setting, value: value, in: libraryURL)
+            if setting == .model {
+                guard let model = modelCatalog?.model(withID: value) else {
+                    modelCatalogError = "Refresh the model list before choosing this model."
+                    return
+                }
+                try OrganizerStatusFile.update([
+                    .model: model.id,
+                    .reasoning: model.compatibleReasoning(preferred: organizerStatus.reasoning),
+                ], in: libraryURL)
+            } else {
+                if setting == .reasoning, !availableReasoningEfforts.contains(value) { return }
+                try OrganizerStatusFile.update(setting, value: value, in: libraryURL)
+            }
             if setting == .language { setupLanguage = value }
             refreshOrganizerStatus()
             noticeMessage = setting == .language
@@ -127,6 +143,41 @@ final class LibraryStore: ObservableObject {
                 : "Automation \(setting.rawValue) saved. The local organizer will use it for the next paper."
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    var availableReasoningEfforts: [String] {
+        modelCatalog?.model(withID: organizerStatus.model)?.reasoningEfforts ?? [organizerStatus.reasoning]
+    }
+
+    func modelDisplayName(_ id: String) -> String {
+        let name = modelCatalog?.model(withID: id)?.displayName ?? CodexModel.name(for: id)
+        // Codex display names sometimes hyphenate the family suffix.
+        return name.replacingOccurrences(of: #"^(GPT-[0-9.]+)-"#, with: "$1 ", options: .regularExpression)
+    }
+
+    func refreshModels() {
+        guard let libraryURL, !isRefreshingModels else { return }
+        isRefreshingModels = true
+        modelCatalogError = nil
+        Task { @MainActor [weak self] in
+            let result = await Task.detached {
+                guard let node = Self.findNodeExecutable() else {
+                    return CodexModelLookupResult.failure("Node.js is unavailable. Check automation setup.")
+                }
+                return CodexModelService.fetch(in: libraryURL, node: node)
+            }.value
+            guard let self else { return }
+            self.isRefreshingModels = false
+            switch result {
+            case .success(let catalog):
+                self.modelCatalog = catalog
+                do { try catalog.save(in: libraryURL) }
+                catch { self.modelCatalogError = "Models refreshed, but the list could not be saved for offline use." }
+            case .failure(let message):
+                // Keep the last successful catalog and never overwrite the selected model.
+                self.modelCatalogError = message
+            }
         }
     }
 
@@ -228,6 +279,7 @@ final class LibraryStore: ObservableObject {
             switch result {
             case .success:
                 self.refreshOrganizerStatus()
+                self.modelCatalog = CodexModelCatalog.read(from: libraryURL)
                 self.isShowingAutomationSetup = false
                 self.noticeMessage = "Paper Organizer is ready. A Finder action will start it only when PDFs are added."
             case .failure(let message):

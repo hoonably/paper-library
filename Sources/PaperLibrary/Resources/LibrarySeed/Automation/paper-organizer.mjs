@@ -7,6 +7,7 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { RECOMMENDED_MODEL, RECOMMENDED_REASONING, validModelID, validReasoning, fetchCodexModels, validateModelSelection } from "./codex-models.mjs";
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(SCRIPT_PATH);
@@ -23,11 +24,7 @@ const WAITING_DIRECTORY = "Waiting";
 const ORGANIZER_SETTINGS_FILE = path.join(CATALOG_DIRECTORY, "organizer-settings.json");
 const PROCESSING_PAPERS_FILE = path.join(CATALOG_DIRECTORY, "processing-papers.json");
 const ORGANIZED_PAPERS_DIRECTORY = "Papers";
-const RECOMMENDED_MODEL = "gpt-5.6-terra";
-const RECOMMENDED_REASONING = "medium";
 const DEFAULT_LANGUAGE = "english";
-const ORGANIZER_MODELS = new Set(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
-const ORGANIZER_REASONING = new Set(["low", "medium", "high", "xhigh"]);
 const ORGANIZER_LANGUAGES = new Set(["english", "korean", "chinese"]);
 const CSV_HEADERS = [
   "category", "subcategory", "venue", "year", "track", "workshop", "presentation",
@@ -287,9 +284,9 @@ async function ensureDeviceIdentity() {
 }
 
 function normalizeOrganizerModel(value) {
-  const model = String(value || "").trim().toLocaleLowerCase();
+  const model = String(value || "").trim();
   const normalized = !model || model === "default" ? RECOMMENDED_MODEL : model;
-  if (!ORGANIZER_MODELS.has(normalized)) {
+  if (!validModelID(normalized)) {
     throw new Error(`Unsupported organizer model: ${value}`);
   }
   return normalized;
@@ -298,7 +295,7 @@ function normalizeOrganizerModel(value) {
 function normalizeOrganizerReasoning(value) {
   const reasoning = String(value || "").trim().toLocaleLowerCase();
   const normalized = !reasoning || reasoning === "default" ? RECOMMENDED_REASONING : reasoning;
-  if (!ORGANIZER_REASONING.has(normalized)) {
+  if (!validReasoning(normalized)) {
     throw new Error(`Unsupported organizer reasoning: ${value}`);
   }
   return normalized;
@@ -1737,6 +1734,8 @@ async function install(root, options) {
   if (login.status !== 0 && !options["skip-login-check"]) {
     throw new Error(`Codex is not signed in. Run ${windowsQuote(codex)} login, then install again.`);
   }
+  const modelCatalog = await fetchCodexModels(codex, { cwd: root });
+  validateModelSelection(modelCatalog, settings.model, settings.reasoning);
   if (process.platform !== "darwin" && !executableOnPath("pdftotext")[0] && !pythonPdfSupport()) {
     console.warn("Warning: no PDF text tool found. Install Poppler or Python pypdf for reliable paper reading.");
   }
@@ -1754,6 +1753,7 @@ async function install(root, options) {
     console.log(`Normalized ${normalized.length} existing catalog PDF(s).`);
   }
   if (settingsChanged) settings = await writeOrganizerSettings(root, settings);
+  await writeJson(path.join(root, CATALOG_DIRECTORY, "codex-models.json"), modelCatalog);
   await disableLegacyBackgroundService(root, paths, false);
   await writeJson(paths.configFile, {
     version: 3,
@@ -1882,6 +1882,7 @@ Usage:
   node Automation/paper-organizer.mjs install [--codex PATH] [--node PATH] [--model NAME] [--reasoning LEVEL] [--language NAME] [--take-over]
   node Automation/paper-organizer.mjs start
   node Automation/paper-organizer.mjs status
+  node Automation/paper-organizer.mjs models
   node Automation/paper-organizer.mjs logs [--lines 80]
   node Automation/paper-organizer.mjs normalize
   node Automation/paper-organizer.mjs instruct
@@ -1902,6 +1903,13 @@ async function main() {
   const root = normalizedRoot(options.root);
   if (command === "help" || command === "--help") return help();
   if (command === "doctor") return doctor(root, options);
+  if (command === "models") {
+    const installed = await readJson(platformPaths(root).configFile, {});
+    const codex = options.codex || installed.codex || discoverCodex(options, root);
+    const catalog = await fetchCodexModels(codex, { cwd: root });
+    console.log(JSON.stringify(catalog));
+    return;
+  }
   if (command === "install") return install(root, options);
   if (command === "migrate") return migrateLegacyAutomation(root);
   if (command === "start") return startOnDemand(root);

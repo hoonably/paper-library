@@ -100,6 +100,7 @@ Do not enable App Sandbox for this architecture. The on-demand organizer and the
 - Confirm **Version History** opens `https://github.com/hoonably/paper-library/releases` in the default browser.
 - Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
 - Confirm **Set Up Automation** configures on-demand execution without installing a LaunchAgent, and that the header remains **Ready for Finder** while idle. Then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
+- Confirm a fresh setup defaults to **GPT-6 Luna / Extra High** (the starred recommendation). On a foreground app launch, query the configured CLI once via `model/list`; check that new models and their supported reasoning levels appear without changing the current selection. Repeatedly opening **MODEL** must not query again; its Refresh button must query on demand. A failed refresh must retain the last successful list, show an error, and offer retry. A Finder service launch must not query models.
 - From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, an organizer process starts, and the process exits after the PDF leaves `Waiting`.
 - Verify the exported app with `codesign --verify --deep --strict --verbose=2`.
 - Confirm the app contains `Contents/Frameworks/Sparkle.framework`, and that `SUFeedURL` and `SUPublicEDKey` are present in its Info.plist.
