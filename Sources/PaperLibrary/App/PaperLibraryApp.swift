@@ -38,6 +38,10 @@ struct PaperLibraryApp: App {
 
                 Divider()
 
+                Button("Show PDF Folder") {
+                    store.revealPapers()
+                }
+
                 Button("Show App Storage") {
                     store.revealStorage()
                 }

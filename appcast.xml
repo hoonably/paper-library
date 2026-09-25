@@ -9,6 +9,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
         <description>Paper Library release updates</description>
         <language>en</language>
         <item>
+            <title>0.5.0</title>
+            <pubDate>Fri, 25 Sep 2026 17:19:34 +0900</pubDate>
+            <link>https://github.com/hoonably/paper-library/releases/tag/v0.5.0</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/hoonably/paper-library/releases</sparkle:fullReleaseNotesLink>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/hoonably/paper-library/releases/download/v0.5.0/Paper-Library.zip" length="2794407" type="application/octet-stream" sparkle:edSignature="ZeaOSnXFpNKEKoocwkCUGCXZbWU0pXKhBFtDn30nPPKO1ETlIvx1ft2xQ5NygSOEiHt8s1nkNmdDDeav7n1WDQ=="/>
+        </item>
+        <item>
             <title>0.4.0</title>
             <pubDate>Wed, 23 Sep 2026 13:22:32 +0900</pubDate>
             <link>https://github.com/hoonably/paper-library/releases/tag/v0.4.0</link>
@@ -55,6 +66,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: dNdSsnKU3lKLeBN+Ss9kv5XuhuwbO2wWbkzvzT/Hw7Og0yr7HoYq9mItQPm5W7UrH0NvPB1V8J2NGC/6D9GWDg==
-length: 4525
+edSignature: bgroFMuqwKe1245xyyv/Y0g6GiIyc2izxbJlkeKERjjRd3iHssqTndvjj5tZnqMd8KNpHaAtZeEtAmlH1gytAg==
+length: 5420
 -->

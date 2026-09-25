@@ -40,7 +40,12 @@ enum LibraryLayout {
         fileManager: FileManager = .default
     ) throws -> URL {
         let root = try managedRoot(fileManager: fileManager)
-        return try prepareLibrary(at: root, bundle: bundle, fileManager: fileManager)
+        _ = try prepareLibrary(at: root, bundle: bundle, fileManager: fileManager)
+        let destination = try PaperStorage.defaultPapersURL(fileManager: fileManager)
+        if try PaperStorage.prepare(in: root, at: destination, fileManager: fileManager) {
+            PaperStorage.requestSpotlightImport(at: destination)
+        }
+        return root
     }
 
     static func prepareLibrary(

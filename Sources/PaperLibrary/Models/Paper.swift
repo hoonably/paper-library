@@ -58,8 +58,8 @@ struct Paper: Identifiable, Codable, Hashable {
         guard hasValidCatalogFilePath else { return nil }
 
         let root = libraryURL.standardizedFileURL
-        let candidate = root.appendingPathComponent(file).standardizedFileURL
-        let papersRoot = LibraryLayout.papersURL(in: root).standardizedFileURL
+        let candidate = root.appendingPathComponent(file).standardizedFileURL.resolvingSymlinksInPath()
+        let papersRoot = LibraryLayout.papersURL(in: root).standardizedFileURL.resolvingSymlinksInPath()
         guard candidate.path.hasPrefix(papersRoot.path + "/") else { return nil }
         return candidate
     }

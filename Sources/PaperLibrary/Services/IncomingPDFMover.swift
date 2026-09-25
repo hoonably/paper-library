@@ -45,8 +45,11 @@ enum IncomingPDFMover {
                 guard values.isRegularFile == true, values.isSymbolicLink != true else {
                     throw MoveError.notRegularFile
                 }
+                let resolvedSource = source.resolvingSymlinksInPath()
+                let papersRoot = LibraryLayout.papersURL(in: libraryRoot).resolvingSymlinksInPath()
                 guard source != libraryRoot,
-                      !source.path.hasPrefix(libraryRoot.path + "/") else {
+                      !source.path.hasPrefix(libraryRoot.path + "/"),
+                      !resolvedSource.path.hasPrefix(papersRoot.path + "/") else {
                     throw MoveError.alreadyInLibrary
                 }
 

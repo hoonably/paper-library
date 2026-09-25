@@ -97,7 +97,7 @@ export function fetchCodexModels(codex, { cwd, timeoutMs = 12_000, args = ["app-
         }
       }
     });
-    send({ id: requestID, method: "initialize", params: { clientInfo: { name: "paper_library", title: "Paper Library", version: "0.4.0" } } });
+    send({ id: requestID, method: "initialize", params: { clientInfo: { name: "paper_library", title: "Paper Library", version: "0.5.0" } } });
   });
 }
 

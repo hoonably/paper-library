@@ -10,8 +10,8 @@ enum CheckFailure: Error, CustomStringConvertible {
     }
 }
 
-func check(_ condition: @autoclosure () -> Bool, _ message: String) throws {
-    if !condition() { throw CheckFailure.failed(message) }
+func check(_ condition: @autoclosure () throws -> Bool, _ message: String) throws {
+    if try !condition() { throw CheckFailure.failed(message) }
 }
 
 func fixturePaper() -> Paper {
@@ -139,6 +139,53 @@ do {
     let symlinkResult = IncomingPDFMover.move([symlinkPDF], to: inbox, excluding: library)
     try check(symlinkResult.failures.count == 1, "A symbolic link was accepted as a PDF")
     try check(FileManager.default.fileExists(atPath: symlinkPDF.path), "Rejected symbolic link was removed")
+
+    let publicPapers = temporaryDirectory.appendingPathComponent("Documents/Paper Library/Papers", isDirectory: true)
+    let storageLock = temporaryDirectory.appendingPathComponent("runtime/on-demand-worker.lock", isDirectory: true)
+    let catalogBeforeMove = try Data(contentsOf: LibraryLayout.catalogCSVURL(in: library))
+    try check(
+        try PaperStorage.prepare(in: library, at: publicPapers, lockDirectory: storageLock),
+        "Existing PDFs were not moved to Documents"
+    )
+    try check(try Data(contentsOf: publicPapers.appendingPathComponent("Systems/organized.pdf")) == Data("%PDF-1.4 organized".utf8), "PDF contents changed during relocation")
+    try check(try Data(contentsOf: LibraryLayout.catalogCSVURL(in: library)) == catalogBeforeMove, "Relocation rewrote the catalog")
+    try check(try LibraryLayout.papersURL(in: library).resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true, "Private Papers path is not a link")
+    try check(try !PaperStorage.prepare(in: library, at: publicPapers, lockDirectory: storageLock), "Relocation ran again on an existing link")
+    _ = try LibraryLayout.prepareLibrary(at: library)
+    try check(try LibraryLayout.papersURL(in: library).resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true, "Library startup replaced the PDF folder link")
+    var publicPaper = original
+    publicPaper.file = "Papers/Systems/organized.pdf"
+    try check(publicPaper.pdfURL(in: library) == publicPapers.appendingPathComponent("Systems/organized.pdf"), "Open PDF did not resolve the public document location")
+    let reimport = IncomingPDFMover.move([publicPapers.appendingPathComponent("Systems/organized.pdf")], to: inbox, excluding: library)
+    try check(reimport.failures.count == 1, "An already organized public PDF was imported again")
+
+    let conflictLibrary = temporaryDirectory.appendingPathComponent("conflict-library", isDirectory: true)
+    _ = try LibraryLayout.prepareLibrary(at: conflictLibrary)
+    let conflictSource = LibraryLayout.papersURL(in: conflictLibrary).appendingPathComponent("keep.pdf")
+    try Data("keep".utf8).write(to: conflictSource)
+    do {
+        _ = try PaperStorage.prepare(in: conflictLibrary, at: publicPapers, lockDirectory: storageLock)
+        throw CheckFailure.failed("An existing destination was merged or overwritten")
+    } catch is CheckFailure { throw CheckFailure.failed("An existing destination was merged or overwritten") }
+      catch { /* Expected conflict. */ }
+    try check(try String(contentsOf: conflictSource, encoding: .utf8) == "keep", "A conflicting migration lost its source")
+
+    try FileManager.default.createDirectory(at: storageLock, withIntermediateDirectories: true)
+    let busyOwner = try JSONSerialization.data(withJSONObject: ["pid": ProcessInfo.processInfo.processIdentifier])
+    try busyOwner.write(to: storageLock.appendingPathComponent("owner.json"))
+    do {
+        _ = try PaperStorage.prepare(in: conflictLibrary, at: temporaryDirectory.appendingPathComponent("busy-target"), lockDirectory: storageLock)
+        throw CheckFailure.failed("Storage changed while the organizer held its lock")
+    } catch is CheckFailure { throw CheckFailure.failed("Storage changed while the organizer held its lock") }
+      catch { /* Expected busy organizer. */ }
+    try check(FileManager.default.fileExists(atPath: conflictSource.path), "Busy migration moved a PDF")
+    try FileManager.default.removeItem(at: storageLock)
+
+    let recoveredLibrary = temporaryDirectory.appendingPathComponent("recovered-library", isDirectory: true)
+    _ = try LibraryLayout.prepareLibrary(at: recoveredLibrary)
+    try CSVCodec.encode([publicPaper]).write(to: LibraryLayout.catalogCSVURL(in: recoveredLibrary), atomically: true, encoding: .utf8)
+    try check(try PaperStorage.prepare(in: recoveredLibrary, at: publicPapers, lockDirectory: storageLock), "An interrupted directory move could not be recovered")
+    try check(publicPaper.pdfURL(in: recoveredLibrary) == publicPaper.pdfURL(in: library), "Recovered storage points to the wrong PDF")
 
     let catalogDirectory = library.appendingPathComponent("Catalog", isDirectory: true)
     try FileManager.default.createDirectory(at: catalogDirectory, withIntermediateDirectories: true)

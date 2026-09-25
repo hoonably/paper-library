@@ -1,6 +1,6 @@
 # Distributing Paper Library for macOS
 
-The app is a native SwiftUI macOS application. It creates and manages its own data under `~/Library/Application Support/Paper Library`; users do not choose or download a library folder.
+The app is a native SwiftUI macOS application. It keeps user PDFs in `~/Documents/Paper Library/Papers` and internal data under `~/Library/Application Support/Paper Library`; users do not choose or download a library folder. The private `Papers` entry links to the Documents folder so existing catalog paths stay valid. Documents access must be allowed, and PDF syncing follows the user's Documents settings.
 
 The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them. The same action starts one detached organizer run, which drains the queue and exits. No persistent folder watcher or LaunchAgent is installed.
 
@@ -13,13 +13,15 @@ Sparkle provides in-app updates through the HTTPS appcast at `appcast.xml`. The 
 
 ## Free, unnotarized build
 
-Open `PaperLibrary.xcodeproj`, select the `PaperLibrary` scheme, choose **My Mac**, and run. On first launch, confirm the app creates `Waiting`, `Papers`, `Catalog`, and `Automation` in its Application Support directory.
+Open `PaperLibrary.xcodeproj`, select the `PaperLibrary` scheme, choose **My Mac**, and run. On first launch, confirm the app creates `Waiting`, `Catalog`, and `Automation` in Application Support, plus a `Papers` link to its PDF folder in Documents. Existing PDFs are moved without rewriting the catalog. A conflicting destination or an active organizer prevents the move.
 
 Without full Xcode or a paid Apple Developer membership, build and package an ad-hoc signed Apple Silicon app with:
 
 ```sh
 scripts/build-local-app.sh
 ```
+
+If a beta Command Line Tools SDK is incomplete, select an installed stable SDK explicitly with `MACOS_SDK_PATH=/path/to/MacOSX.sdk scripts/build-local-app.sh`. The same override works with `scripts/prepare-release.sh`.
 
 This normally creates `dist/Paper Library.app` and `dist/Paper-Library.zip`. The app is signed and verified in a temporary staging directory before both outputs are copied into the repository. If the destination attaches metadata that invalidates the loose signed bundle, the script removes that copy and keeps only the verified ZIP.
 
@@ -99,6 +101,7 @@ Do not enable App Sandbox for this architecture. The on-demand organizer and the
 - Confirm **Paper Library → Check for Updates…** is enabled in a packaged app.
 - Confirm **Version History** opens `https://github.com/hoonably/paper-library/releases` in the default browser.
 - Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
+- Confirm **File → Show PDF Folder** opens the real Documents location, organized PDFs appear in Spotlight and Alfred after indexing, and existing PDF contents and catalog records are preserved during relocation. Only request indexing for the PDF folder or individual completed PDFs; never reindex an entire volume.
 - Confirm **Set Up Automation** configures on-demand execution without installing a LaunchAgent, and that the header remains **Ready for Finder** while idle. Then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
 - Confirm a fresh setup defaults to **GPT-6 Luna / Extra High** (the starred recommendation). On a foreground app launch, query the configured CLI once via `model/list`; check that new models and their supported reasoning levels appear without changing the current selection. Repeatedly opening **MODEL** must not query again; its Refresh button must query on demand. A failed refresh must retain the last successful list, show an error, and offer retry. A Finder service launch must not query models.
 - From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, an organizer process starts, and the process exits after the PDF leaves `Waiting`.

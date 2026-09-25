@@ -440,6 +440,11 @@ final class LibraryStore: ObservableObject {
         NSWorkspace.shared.open(libraryURL)
     }
 
+    func revealPapers() {
+        guard let libraryURL else { return }
+        NSWorkspace.shared.open(LibraryLayout.papersURL(in: libraryURL).resolvingSymlinksInPath())
+    }
+
     func openSite(_ paper: Paper) {
         guard let url = URL(string: paper.site), ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
             errorMessage = "The paper site URL is invalid."

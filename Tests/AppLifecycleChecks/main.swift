@@ -71,6 +71,10 @@ struct AppLifecycleChecks {
     static func main() {
         let app = TestApplication.shared as! TestApplication
         app.prepareHeadless()
+        precondition(Bundle.main.object(forInfoDictionaryKey: "LSBackgroundOnly") as? Bool == true,
+                     "The lifecycle test must launch as a background-only app")
+        precondition(NSRunningApplication.current.activationPolicy == .prohibited,
+                     "The lifecycle test must never become a Dock app")
         let window = TestWindow(
             contentRect: NSRect(x: 0, y: 0, width: 980, height: 640),
             styleMask: [.titled, .closable], backing: .buffered, defer: true
@@ -123,6 +127,8 @@ struct AppLifecycleChecks {
         precondition(!shouldUseDefaultReopen && window.showCount == previousShowCount + 1,
                      "Reopening did not show the existing window")
         precondition(app.activationPolicy() == .regular, "Reopening left the app in background mode")
+        precondition(NSRunningApplication.current.activationPolicy == .prohibited,
+                     "The test changed the real app's Dock visibility")
         RunLoop.main.run(until: Date().addingTimeInterval(0.35))
         precondition(app.terminationCount == 0, "The service terminated an explicitly reopened app")
 

@@ -514,6 +514,90 @@ function run(argv) {
 }
 `;
 
+// Keep the final filename in the destination URL of one Foundation move. The
+// Finder action has already moved an incoming PDF into Waiting/ because its
+// official title is not known until the organizer reads it.
+const MACOS_PDF_MOVE_SCRIPT = `
+ObjC.import("Foundation");
+
+function run(argv) {
+  const source = $.NSURL.fileURLWithPath(argv[0]);
+  const destination = $.NSURL.fileURLWithPath(argv[1]);
+  if (!$.NSFileManager.defaultManager.moveItemAtURLToURLError(source, destination, null)) {
+    throw new Error("FileManager could not move the PDF to its final filename.");
+  }
+  return ObjC.unwrap(destination.lastPathComponent);
+}
+`;
+
+async function moveLibraryPdf(root, from, to) {
+  if (from === to) throw new Error("The source and destination PDF paths are the same.");
+  const source = await fsp.lstat(from);
+  if (!source.isFile() || source.isSymbolicLink()) {
+    throw new Error(`The source must be a regular PDF: ${from}`);
+  }
+  if (await pathExists(to)) throw new Error(`The destination PDF already exists: ${to}`);
+
+  const rootReal = await fsp.realpath(root);
+  const papersReal = await fsp.realpath(path.join(root, ORGANIZED_PAPERS_DIRECTORY));
+  const sourceReal = await fsp.realpath(from);
+  const inside = (file, directory) => file === directory || file.startsWith(directory + path.sep);
+  if (!inside(sourceReal, path.join(rootReal, WAITING_DIRECTORY)) && !inside(sourceReal, papersReal)) {
+    throw new Error("The source PDF must remain inside Waiting/ or the PDF folder.");
+  }
+  // Resolve the nearest existing parent before creating directories, so a
+  // nested symlink cannot redirect the move outside the managed PDF folder.
+  let ancestor = path.dirname(to);
+  while (true) {
+    try {
+      if (!inside(await fsp.realpath(ancestor), papersReal)) {
+        throw new Error("The destination must remain inside the PDF folder.");
+      }
+      break;
+    } catch (error) {
+      if (error.code !== "ENOENT" || ancestor === path.dirname(ancestor)) throw error;
+      ancestor = path.dirname(ancestor);
+    }
+  }
+  await fsp.mkdir(path.dirname(to), { recursive: true });
+  const parentReal = await fsp.realpath(path.dirname(to));
+  if (!inside(parentReal, papersReal)) {
+    throw new Error("The destination must remain inside the PDF folder.");
+  }
+  const physicalDestination = path.join(parentReal, path.basename(to));
+
+  if (process.platform === "darwin") {
+    const result = spawnSync(
+      "/usr/bin/osascript",
+      ["-l", "JavaScript", "-e", MACOS_PDF_MOVE_SCRIPT, "--", sourceReal, physicalDestination],
+      { encoding: "utf8", windowsHide: true }
+    );
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      throw new Error((result.stderr || result.stdout || "Foundation PDF move failed.").trim());
+    }
+  } else {
+    await fsp.rename(sourceReal, physicalDestination);
+  }
+
+  // Do not treat a successful move call as proof that the requested filename
+  // was created. Read the directory entry that the filesystem actually has.
+  const expectedName = path.basename(to).normalize("NFC");
+  const entries = await fsp.readdir(parentReal, { withFileTypes: true });
+  const actual = entries.find((entry) => entry.name.normalize("NFC") === expectedName);
+  if (!actual?.isFile() || await pathExists(from)) {
+    throw new Error(`The final filesystem filename could not be verified: ${to}`);
+  }
+  if (process.platform === "darwin") {
+    // Import only this completed PDF, using its real Documents path. A query
+    // through the private Papers link must not classify it as app support data.
+    const importer = spawn("/usr/bin/mdimport", ["-i", path.join(parentReal, actual.name)], { stdio: "ignore" });
+    importer.on("error", (error) => console.warn(`Could not request PDF indexing: ${error.message}`));
+    importer.unref();
+  }
+  return path.join(path.dirname(to), actual.name);
+}
+
 function requestedPage(value, fallback, name) {
   if (value === undefined) return fallback;
   if (!/^\d+$/.test(String(value)) || Number(value) < 1) {
@@ -890,36 +974,55 @@ async function applyLibraryCommandPlan(root, paths, plan) {
     return { summary: validated.summary, updatedCount: 0, updates: [] };
   }
 
-  await ensureRuntimeDirectories(paths);
-  const stagingRoot = await fsp.mkdtemp(path.join(paths.stateDir, "library-command-"));
-  const actualMoves = movePlans.filter((item) => item.from !== item.to).map((item, index) => ({
-    ...item,
-    stage: path.join(stagingRoot, `${index}.pdf`),
-  }));
-  try {
-    for (const item of actualMoves) await fsp.rename(item.from, item.stage);
-    for (const item of actualMoves) {
-      await fsp.mkdir(path.dirname(item.to), { recursive: true });
-      await fsp.rename(item.stage, item.to);
-    }
-    await writeTextAtomically(csvPath, csvText(validated.updatedRecords));
-  } catch (error) {
-    for (const item of actualMoves) {
-      if (await pathExists(item.to) && !await pathExists(item.stage)) {
-        try { await fsp.rename(item.to, item.stage); } catch { /* preserve the original error */ }
+  const actualMoves = movePlans.filter((item) => item.from !== item.to);
+  if (actualMoves.some((item) => movingSources.has(item.to))) {
+    // A path swap cannot be completed with direct moves because a destination
+    // is still occupied. Keep staging only for this exceptional case.
+    await ensureRuntimeDirectories(paths);
+    const stagingRoot = await fsp.mkdtemp(path.join(paths.stateDir, "library-command-"));
+    const stagedMoves = actualMoves.map((item, index) => ({
+      ...item,
+      stage: path.join(stagingRoot, `${index}.pdf`),
+    }));
+    try {
+      for (const item of stagedMoves) await fsp.rename(item.from, item.stage);
+      for (const item of stagedMoves) {
+        await fsp.mkdir(path.dirname(item.to), { recursive: true });
+        await fsp.rename(item.stage, item.to);
       }
-    }
-    for (const item of actualMoves.reverse()) {
-      if (await pathExists(item.stage) && !await pathExists(item.from)) {
-        try {
-          await fsp.mkdir(path.dirname(item.from), { recursive: true });
-          await fsp.rename(item.stage, item.from);
-        } catch { /* preserve the original error */ }
+      await writeTextAtomically(csvPath, csvText(validated.updatedRecords));
+    } catch (error) {
+      for (const item of stagedMoves) {
+        if (await pathExists(item.to) && !await pathExists(item.stage)) {
+          try { await fsp.rename(item.to, item.stage); } catch { /* preserve the original error */ }
+        }
       }
+      for (const item of stagedMoves.reverse()) {
+        if (await pathExists(item.stage) && !await pathExists(item.from)) {
+          try {
+            await fsp.mkdir(path.dirname(item.from), { recursive: true });
+            await fsp.rename(item.stage, item.from);
+          } catch { /* preserve the original error */ }
+        }
+      }
+      throw error;
+    } finally {
+      await fsp.rm(stagingRoot, { recursive: true, force: true });
     }
-    throw error;
-  } finally {
-    await fsp.rm(stagingRoot, { recursive: true, force: true });
+  } else {
+    try {
+      for (const item of actualMoves) {
+        await moveLibraryPdf(root, item.from, item.to);
+      }
+      await writeTextAtomically(csvPath, csvText(validated.updatedRecords));
+    } catch (error) {
+      for (const item of [...actualMoves].reverse()) {
+        if (await pathExists(item.to) && !await pathExists(item.from)) {
+          try { await moveLibraryPdf(root, item.to, item.from); } catch { /* preserve the original error */ }
+        }
+      }
+      throw error;
+    }
   }
   try {
     await removeEmptyPaperDirectories(root);
@@ -989,23 +1092,22 @@ async function normalizeCatalogFiles(root, applyChanges) {
   for (const plan of changes) {
     const from = path.resolve(root, ...plan.fromRelative.split("/"));
     const to = path.resolve(root, ...plan.toRelative.split("/"));
-    if (from !== to) {
-      await fsp.mkdir(path.dirname(to), { recursive: true });
-      await fsp.rename(from, to);
-    }
     const oldValues = {
       file: plan.record.file,
       category: plan.record.category,
       subcategory: plan.record.subcategory,
     };
-    plan.record.file = plan.toRelative;
-    plan.record.category = plan.toCategory;
-    plan.record.subcategory = plan.toSubcategory;
     try {
+      if (from !== to) await moveLibraryPdf(root, from, to);
+      plan.record.file = plan.toRelative;
+      plan.record.category = plan.toCategory;
+      plan.record.subcategory = plan.toSubcategory;
       await writeTextAtomically(csvPath, csvText(records));
     } catch (error) {
       Object.assign(plan.record, oldValues);
-      if (from !== to) await fsp.rename(to, from);
+      if (from !== to && await pathExists(to) && !await pathExists(from)) {
+        await moveLibraryPdf(root, to, from);
+      }
       throw error;
     }
   }
@@ -1043,6 +1145,13 @@ function codexArguments(runtime, options = {}) {
   } = options;
   const args = ["-C", runtime.root];
   if (includeStateDirectory) args.push("--add-dir", runtime.paths.stateDir);
+  if (sandbox === "workspace-write") {
+    // Papers/ can link to the user's Documents folder. Grant the organizer
+    // access to that real location as well as its private working directory.
+    const logicalPapers = path.join(runtime.root, ORGANIZED_PAPERS_DIRECTORY);
+    const physicalPapers = fs.realpathSync(logicalPapers);
+    if (physicalPapers !== logicalPapers) args.push("--add-dir", physicalPapers);
+  }
   if (searchEnabled) args.unshift("--search");
   if (runtime.model) args.push("-m", runtime.model);
   if (runtime.reasoning) args.push("-c", `model_reasoning_effort=${JSON.stringify(runtime.reasoning)}`);
@@ -1895,6 +2004,7 @@ Agent helper commands:
   node Automation/paper-organizer.mjs progress --file Waiting/FILE.pdf --title TITLE
   node Automation/paper-organizer.mjs same --left Waiting/FILE.pdf --right Papers/Field/FILE.pdf
   node Automation/paper-organizer.mjs sanitize --title TITLE
+  node Automation/paper-organizer.mjs place --file Waiting/FILE.pdf --to Papers/Field/TITLE.pdf
 `);
 }
 
@@ -1919,6 +2029,19 @@ async function main() {
   if (command === "sanitize") {
     if (!options.title) throw new Error("--title is required.");
     console.log(portableFilename(options.title));
+    return;
+  }
+  if (command === "place") {
+    if (!options.file || !options.to) throw new Error("--file and --to are required.");
+    let from;
+    try {
+      from = safeTopLevelPdf(root, options.file);
+    } catch {
+      from = safeLibraryPdf(root, options.file);
+    }
+    const to = safeLibraryPdf(root, options.to);
+    const actual = await moveLibraryPdf(root, from, to);
+    console.log(JSON.stringify({ moved: path.relative(root, actual).split(path.sep).join("/") }));
     return;
   }
   if (command === "normalize") {
