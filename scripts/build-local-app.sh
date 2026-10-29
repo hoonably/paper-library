@@ -71,6 +71,9 @@ fi
 ditto -c -k --sequesterRsrc --keepParent "$staged_app" "$staged_zip"
 cp "$staged_zip" "$zip_path"
 
+# DMG is the human-facing installer; the exact ZIP remains the Sparkle payload.
+"$repository_root/scripts/build-mac-dmg.sh" "$staged_app" "$destination_root"
+
 ditto --norsrc "$staged_app" "$app_bundle"
 xattr -cr "$app_bundle" || true
 # Some File Provider-backed folders attach Finder metadata shortly after a

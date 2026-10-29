@@ -35,6 +35,12 @@ enum LibraryLayout {
         catalogURL(in: root).appendingPathComponent("papers.csv", isDirectory: false)
     }
 
+    /// Inspect only app-owned storage; do not touch Documents before explaining access.
+    static func hasExistingCatalog(fileManager: FileManager = .default) -> Bool {
+        guard let root = try? managedRoot(fileManager: fileManager) else { return false }
+        return fileManager.fileExists(atPath: catalogCSVURL(in: root).path)
+    }
+
     static func prepareManagedLibrary(
         bundle: Bundle = .main,
         fileManager: FileManager = .default

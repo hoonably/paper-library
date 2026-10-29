@@ -9,5 +9,6 @@ repository_root="$(cd "$(dirname "$0")/.." && pwd)"
   "$repository_root/dist/Paper-Library.zip"
 
 print "Release files are ready:"
+print "  $repository_root/dist/Paper-Library-v<version>-macos-<architecture>.dmg"
 print "  $repository_root/dist/Paper-Library.zip"
 print "  $repository_root/appcast.xml"

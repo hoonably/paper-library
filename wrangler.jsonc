@@ -1,0 +1,5 @@
+// Configured project name; public deployment is pending.
+{
+  "name": "paper-library",
+  "pages_build_output_dir": "./website"
+}

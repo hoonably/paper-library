@@ -87,6 +87,15 @@ struct OrganizerStatusHeader: View {
                 LibraryCommandPopover()
                     .environmentObject(store)
             }
+
+            SettingsLink {
+                Image(systemName: "gearshape")
+                    .font(.callout.weight(.medium))
+                    .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.plain)
+            .help("Settings and updates")
+            .accessibilityLabel("Settings and updates")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -98,7 +107,6 @@ struct OrganizerStatusHeader: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
-                .shadow(color: statusColor.opacity(0.45), radius: 4)
             Text(store.organizerStatus.phaseLabel)
                 .font(.callout.weight(.semibold))
                 .lineLimit(1)

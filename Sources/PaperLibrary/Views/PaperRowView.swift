@@ -63,12 +63,14 @@ struct PresentationBadge: View {
     let presentation: String
 
     var body: some View {
-        Text(presentation)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(color.opacity(0.13), in: Capsule())
+        if !presentation.trimmed.isEmpty {
+            Text(presentation)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(color)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(color.opacity(0.13), in: Capsule())
+        }
     }
 
     private var color: Color {

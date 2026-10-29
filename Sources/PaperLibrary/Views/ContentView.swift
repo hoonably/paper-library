@@ -162,6 +162,7 @@ struct ContentView: View {
                 libraryView
             }
         }
+        .tint(LibraryStyle.accent)
         .alert("Paper Library", isPresented: Binding(
             get: { store.errorMessage != nil },
             set: { if !$0 { store.errorMessage = nil } }
@@ -205,11 +206,57 @@ struct ContentView: View {
     }
 
     private var storageUnavailableView: some View {
-        ContentUnavailableView {
-            Label("Paper Library", systemImage: "books.vertical.fill")
-        } description: {
-            Text("The app could not prepare its private library storage.")
+        VStack(alignment: .leading, spacing: 24) {
+            Image(systemName: "books.vertical.fill")
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(LibraryStyle.accent)
+                .frame(width: 64, height: 64)
+                .background(LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 16))
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your papers, in one place")
+                    .font(.system(size: 28, weight: .semibold))
+                Text("Paper Library saves PDFs in your Documents folder. Allow access when macOS asks so you can organize, open, and find your papers.")
+                    .font(.body).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 16) {
+                Label("PDFs · Documents / Paper Library / Papers", systemImage: "folder")
+                Label("Catalog and settings · stored on this Mac", systemImage: "internaldrive")
+                Label("Finder action · starts only when you add PDFs", systemImage: "cursorarrow.click")
+            }
+            .font(.callout)
+            .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+            if let message = store.storageAccessError {
+                Label {
+                    Text(message).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
+                .font(.callout).foregroundStyle(.secondary)
+                Text("If access was denied, enable Documents Folder for Paper Library in System Settings → Privacy & Security → Files and Folders, then try again.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 12) {
+                Button(store.storageAccessError == nil ? "Continue" : "Try Again") {
+                    store.allowLibraryAccess()
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large)
+                .keyboardShortcut(.defaultAction)
+                if store.storageAccessError != nil {
+                    Button("Open Settings") {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")!)
+                    }
+                    .controlSize(.large)
+                }
+            }
+            Text("Only Documents access is needed. You can close this window and finish setup later.")
+                .font(.caption).foregroundStyle(.secondary)
         }
+        .padding(36).frame(maxWidth: 580, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var libraryView: some View {
@@ -288,6 +335,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Clear Search")
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 13)
@@ -319,6 +367,8 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Reset Search and Filters")
+                .accessibilityLabel("Reset search and filters")
+                .disabled(!hasActiveFilters)
 
                 Divider()
                     .frame(height: 32)
@@ -369,10 +419,10 @@ struct ContentView: View {
             }
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 40)
-            .background(.quaternary.opacity(0.42), in: RoundedRectangle(cornerRadius: 10))
+            .background(selection.wrappedValue.isEmpty ? Color.primary.opacity(0.035) : LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
             .overlay {
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(.separator.opacity(0.55), lineWidth: 1)
+                    .stroke(selection.wrappedValue.isEmpty ? Color(nsColor: .separatorColor).opacity(0.55) : LibraryStyle.accent.opacity(0.4), lineWidth: 1)
             }
         }
         .menuStyle(.button)
@@ -408,10 +458,10 @@ struct ContentView: View {
             .foregroundStyle(.tint)
             .padding(.horizontal, 12)
             .frame(minWidth: 150, maxWidth: .infinity, minHeight: 40)
-            .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
+            .background(LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
             .overlay {
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.accentColor.opacity(0.55), lineWidth: 1)
+                    .stroke(LibraryStyle.accent.opacity(0.55), lineWidth: 1)
             }
         }
         .menuStyle(.button)
@@ -507,13 +557,29 @@ struct ContentView: View {
 
             if filteredPapers.isEmpty && processingPapers.isEmpty {
                 if store.papers.isEmpty, !hasActiveFilters {
-                    ContentUnavailableView(
-                        "No Papers Yet",
-                        systemImage: "doc.badge.plus",
-                        description: Text("In Finder, right-click a PDF and choose Services → Move to Paper Library.")
-                    )
+                    ContentUnavailableView {
+                        Label("Add your first paper", systemImage: "doc.badge.plus")
+                    } description: {
+                        Text("In Finder, right-click a PDF and choose Services → Move to Paper Library. The PDF moves into your waiting queue.")
+                    } actions: {
+                        if !store.isAutomationConfigured {
+                            Button("Set Up Automation") { store.presentAutomationSetup() }
+                                .buttonStyle(.borderedProminent)
+                        } else {
+                            Button("Open Finder") { NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser) }
+                                .buttonStyle(.bordered)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ContentUnavailableView.search(text: searchText)
+                    ContentUnavailableView {
+                        Label("No matching papers", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("Try a different search or clear the filters to see your library.")
+                    } actions: {
+                        Button("Clear Search and Filters") { clearFilters() }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
                 List(selection: listSelection) {
@@ -564,4 +630,13 @@ struct ContentView: View {
         Array(Set(values.filter { !$0.isEmpty }))
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
+}
+
+enum LibraryStyle {
+    static let accent = Color(nsColor: NSColor(name: nil) { appearance in
+        if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+            return NSColor(red: 0.47, green: 0.75, blue: 0.62, alpha: 1)
+        }
+        return NSColor(red: 0.145, green: 0.42, blue: 0.33, alpha: 1)
+    })
 }

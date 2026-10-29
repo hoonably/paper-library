@@ -1,51 +1,49 @@
 # Paper Library
 
-Finder에서 PDF를 바로 추가하면 Codex가 읽고 확인한 뒤 분야별로 정리해 주는 macOS 앱입니다.
+**PDF를 모으고, 읽고, 다시 찾는 macOS 논문 라이브러리입니다.**
 
-<p align="center">
-  <img src="docs/images/app-overview.png" alt="Paper Library 앱 화면" width="100%">
-</p>
+Finder에서 논문을 추가하면 Codex가 요약과 출판 정보를 정리해요. 분야·학회·연도별로 찾아보고, 필요한 PDF를 바로 열 수 있습니다.
 
-현재는 소수 사용자를 위한 초기 베타 버전입니다. **macOS 14 이상이 설치된 Apple Silicon Mac**과 로그인된 **[Codex CLI](https://developers.openai.com/codex/cli)**가 필요합니다.
+![유명 논문 일곱 편을 정리한 Paper Library 앱 화면](docs/images/app-overview.webp)
 
-## 처음 시작하기
+<sub>현재 앱 화면 · 실제 논문으로 구성한 예시 라이브러리입니다.</sub>
 
-1. [GitHub Releases](https://github.com/hoonably/paper-library/releases)에서 `Paper-Library.zip`을 받습니다.
-2. 압축을 풀고 `Paper Library.app`을 **응용 프로그램** 폴더로 옮깁니다.
-3. 앱을 한 번 실행합니다.
+## 주요 기능
 
-macOS가 실행을 막으면 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**를 누릅니다.
+- **Finder에서 추가** — PDF를 우클릭하고 `서비스 → Move to Paper Library`를 선택해요.
+- **요약과 분류** — 요약, 새로운 기여, 출판 정보와 분야를 함께 정리해요.
+- **검색과 필터** — 제목·저자·핵심 내용을 검색하고 분야·학회·연도 등으로 좁혀요.
+- **내 방식으로 수정** — 메타데이터를 직접 편집하거나 Codex에 정리 요청을 보낼 수 있어요.
 
-<p align="center">
-  <img src="docs/images/install-open-anyway-settings.png" alt="개인정보 보호 및 보안에서 Paper Library를 허용하는 화면" width="760">
-</p>
+## 설치·시작하기
 
-4. 처음 표시되는 설정 화면에서 언어를 선택합니다.
-5. 로그인이 필요하면 **Sign In**을 누르고 브라우저에서 로그인합니다.
-6. **Codex CLI is ready**가 표시되면 **Finish Setup**을 누릅니다.
+macOS 14 이상이 설치된 Apple Silicon Mac과 로그인된 [Codex CLI](https://developers.openai.com/codex/cli)가 필요합니다. 현재는 초기 베타 버전이에요.
 
-Git 저장소나 소스 코드는 받을 필요가 없습니다. 논문 PDF는 `문서/Paper Library/Papers`에, 설정과 처리 대기 파일은 앱 전용 저장소에 자동으로 보관합니다. 문서 폴더 접근을 요청하면 허용해 주세요.
+1. [최신 릴리스](https://github.com/hoonably/paper-library/releases/latest)에서 DMG를 받아 열고, **Paper Library를 Applications로 드래그**해요. 이전 릴리스에 ZIP만 있다면 압축을 풀어 앱을 응용 프로그램 폴더로 옮겨주세요.
+2. 앱을 열고 저장 위치 안내에서 **Continue**를 눌러요. macOS가 문서 폴더 접근을 요청하면 허용해요.
+3. 요약 언어를 선택하고, 필요하면 **Sign In**으로 로그인해요. **Codex CLI is ready**가 표시되면 **Finish Setup**을 눌러요.
+4. Finder에서 PDF를 우클릭하고 **서비스 → Move to Paper Library**를 선택해요.
 
-PDF는 Spotlight와 Alfred에서도 검색할 수 있습니다. 저장 폴더는 앱 메뉴의 **File → Show PDF Folder**로 열 수 있습니다.
+PDF는 복사되지 않고 처리 대기 공간으로 **이동**합니다. 정리 작업은 추가할 때만 시작하고 완료되면 종료돼요. 상시 폴더 감시는 하지 않습니다.
 
-라이브러리 목록과 자동화 설정은 **이 Mac에** 저장됩니다. PDF는 문서 폴더의 동기화 설정을 따릅니다. 앱을 업데이트해도 기존 논문과 목록은 유지됩니다.
+Apple 공증을 받지 않은 빌드가 차단되면 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**를 사용해 주세요. 배포 파일의 서명·공증 상태는 해당 릴리스 설명에서 확인할 수 있어요.
 
-기본 추천은 **GPT-6 Luna / Extra High ★**입니다. 모델 목록은 앱을 새로 실행할 때 확인합니다. 바로 다시 확인하려면 상단 **MODEL → 새로고침**을 누르세요. 새 모델이 보이지 않으면 Codex CLI도 업데이트해 주세요.
+## 저장 위치와 권한
+
+PDF는 `문서/Paper Library/Papers`, 목록과 설정은 이 Mac의 앱 전용 저장소에 보관해요. PDF 동기화는 문서 폴더 설정을 따르며, 업데이트해도 기존 논문과 목록은 유지됩니다.
+
+**문서 폴더 접근만 필요하며 전체 디스크 접근은 요청하지 않아요.** 권한을 거절했다면 앱 안내의 **Open Settings**에서 문서 폴더 접근을 켠 뒤 **Try Again**을 눌러요. 저장 위치와 권한 안내는 **Settings → Library**에서도 확인할 수 있어요.
+
+추가한 PDF의 자동 정리에는 로그인한 Codex 계정을 사용합니다. 앱의 모델·추론·요약 언어 메뉴에서 다음 논문에 사용할 설정을 바꿀 수 있어요.
 
 ## 업데이트
 
-앱이 실행 중이면 새 버전을 자동으로 확인하고, 업데이트가 있으면 설치 안내를 표시합니다. 직접 확인하려면 상단 메뉴에서 **Paper Library → Check for Updates…**를 누릅니다.
+**Paper Library → Check for Updates…** 또는 **Settings → Updates**에서 새 버전을 확인해요. **Notify me about updates automatically**를 켜면 앱 실행 중 새 버전을 자동으로 확인하고 알려줘요. 이 체크는 자동 다운로드·설치를 켜지 않습니다.
 
-업데이트 파일은 서명을 확인한 뒤 설치되며, 기존 논문과 설정은 그대로 유지됩니다.
+업데이트는 기존 Sparkle 서명 검증을 거쳐 설치됩니다. 앱에서 진행 중인 자동화 설정·라이브러리 수정은 마친 뒤 앱을 다시 시작해요. 새로 설치할 때는 DMG를, 앱 내부 업데이트에는 ZIP을 사용해요.
 
-## PDF 추가하기
+## 개발·배포 안내
 
-Finder에서 PDF를 우클릭한 뒤 **서비스 → Move to Paper Library**를 누릅니다.
+[개발 가이드](docs/DEVELOPMENT.md) · [배포 가이드](docs/DISTRIBUTION.md) · [릴리스 문구](docs/RELEASE_NOTES.md)
 
-<p align="center">
-  <img src="docs/images/finder-move-to-paper-library.png" alt="Finder에서 PDF를 우클릭해 Move to Paper Library를 선택하는 화면" width="900">
-</p>
-
-PDF는 복사되지 않고 앱의 `Waiting` 공간으로 이동합니다. 처리가 끝나면 앱 목록이 자동으로 갱신됩니다. 앱 창은 열리지 않습니다.
-
-상시 폴더 감시는 하지 않습니다. **Move to Paper Library**를 누를 때만 정리 작업이 백그라운드에서 시작되고, 끝나면 자동으로 종료됩니다.
+개발: [Jeonghoon Park](https://jeonghoonpark.com)

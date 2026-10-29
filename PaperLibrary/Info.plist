@@ -38,6 +38,8 @@
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/hoonably/paper-library/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>

@@ -1,112 +1,79 @@
-# Distributing Paper Library for macOS
+# 배포 가이드
 
-The app is a native SwiftUI macOS application. It keeps user PDFs in `~/Documents/Paper Library/Papers` and internal data under `~/Library/Application Support/Paper Library`; users do not choose or download a library folder. The private `Papers` entry links to the Documents folder so existing catalog paths stay valid. Documents access must be allowed, and PDF syncing follows the user's Documents settings.
+새 설치에는 **DMG**, 앱 내부 Sparkle 업데이트에는 **ZIP**을 제공합니다. 같은 검증된 앱을 두 파일에 넣고 기존 업데이트 서명 키를 유지합니다.
 
-The app also advertises a PDF-only macOS Service named **Move to Paper Library**. Finder shows it under **Services** after the app has been launched once. If macOS hides it, enable it in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**. Invoking the service silently moves selected PDFs into the app-managed `Waiting` directory; it does not copy or overwrite them. The same action starts one detached organizer run, which drains the queue and exits. No persistent folder watcher or LaunchAgent is installed.
+## 로컬 패키징
 
-Sparkle provides in-app updates through the HTTPS appcast at `appcast.xml`. The app checks on Sparkle's normal schedule and exposes **Paper Library → Check for Updates…**. **Version History** opens the repository's GitHub Releases page. Finder Service launches do not start the updater.
-
-## Requirements
-
-- Free build: macOS 14 or later and the Xcode Command Line Tools
-- Notarized build: full Xcode, an Apple Developer Program membership, a unique bundle identifier, and a Developer ID Application certificate
-
-## Free, unnotarized build
-
-Open `PaperLibrary.xcodeproj`, select the `PaperLibrary` scheme, choose **My Mac**, and run. On first launch, confirm the app creates `Waiting`, `Catalog`, and `Automation` in Application Support, plus a `Papers` link to its PDF folder in Documents. Existing PDFs are moved without rewriting the catalog. A conflicting destination or an active organizer prevents the move.
-
-Without full Xcode or a paid Apple Developer membership, build and package an ad-hoc signed Apple Silicon app with:
+macOS 14 이상, Xcode Command Line Tools, `uv`가 필요합니다.
 
 ```sh
 scripts/build-local-app.sh
 ```
 
-If a beta Command Line Tools SDK is incomplete, select an installed stable SDK explicitly with `MACOS_SDK_PATH=/path/to/MacOSX.sdk scripts/build-local-app.sh`. The same override works with `scripts/prepare-release.sh`.
+생성 파일:
 
-This normally creates `dist/Paper Library.app` and `dist/Paper-Library.zip`. The app is signed and verified in a temporary staging directory before both outputs are copied into the repository. If the destination attaches metadata that invalidates the loose signed bundle, the script removes that copy and keeps only the verified ZIP.
+- `dist/Paper Library.app` — 로컬 확인용 앱
+- `dist/Paper-Library-v<version>-macos-<architecture>.dmg` — 앱을 Applications로 드래그하는 설치 파일
+- `dist/Paper-Library.zip` — 기존 Sparkle 업데이트 경로를 유지하는 압축 파일
 
-This build can be attached to a GitHub Release, but it is not checked or notarized by Apple. State that limitation clearly in the GitHub Release description. After the first blocked launch, users must open **System Settings → Privacy & Security** and choose **Open Anyway**. Upload the ZIP, not the loose `.app` directory.
+DMG에는 실제 실행 파일의 아키텍처를 표시합니다. 현재 로컬 빌드는 Apple Silicon용이며 Intel 지원으로 소개하지 않습니다. 앱 서명, DMG 무결성, 이미지 안의 앱 서명과 Applications 링크를 검사한 뒤 최종 파일을 교체합니다. Finder 자동화 권한은 필요하지 않습니다.
 
-The first release that includes Sparkle must still be downloaded manually by existing users. Later releases can be installed inside the app.
+출력 경로가 앱 서명을 변경하는 메타데이터를 붙이면 느슨한 `.app` 사본을 제거하고 검증된 DMG·ZIP만 남깁니다. 불완전한 베타 SDK를 쓰는 환경은 `MACOS_SDK_PATH=/path/to/MacOSX.sdk`로 안정 SDK를 지정할 수 있습니다.
 
-## Free release updates
+기존에 빌드한 앱으로 DMG만 다시 만들려면:
 
-Update archives and the appcast are authenticated with a Sparkle EdDSA key, independently of Apple's paid Developer ID program. The public key is embedded in `PaperLibrary/Info.plist`. The matching private key must never be committed or attached to a release.
+```sh
+scripts/build-mac-dmg.sh '/path/to/Paper Library.app' '/path/to/output'
+```
 
-On the release Mac, the key is stored in the login Keychain under the Sparkle account `hoonably.paper-library`. The local release script reads its exported copy from:
+## 서명과 공증
+
+기본 스크립트는 ad-hoc 서명한 초기 베타 빌드를 만듭니다. **Apple Developer ID 서명·공증을 받은 배포물은 아닙니다.** 릴리스 설명에 이 상태를 명확히 적고, 실행이 막힌 경우 개인정보 보호 및 보안의 **그래도 열기**를 안내합니다.
+
+넓은 배포에는 Apple Developer Program 계정, Developer ID 인증서와 전체 Xcode를 사용하세요. `PaperLibrary.xcodeproj`에서 보관·Developer ID 내보내기·공증을 마친 뒤 티켓을 붙입니다.
+
+```sh
+xcrun stapler staple '/path/to/Paper Library.app'
+scripts/verify-release-app.sh '/path/to/Paper Library.app'
+```
+
+이 검증은 정식 배포 기준이며 ad-hoc 서명, 미공증 또는 비유니버설 앱을 거절합니다. 통과한 앱으로 DMG를 만들고 `ditto -c -k --sequesterRsrc --keepParent`로 동일 앱의 `Paper-Library.zip`을 생성하세요. ad-hoc 빌드 결과를 공증된 결과로 소개하지 않습니다.
+
+이 앱은 의도적으로 App Sandbox를 사용하지 않습니다. 앱과 필요할 때 실행되는 정리기가 같은 Application Support 라이브러리를 사용합니다.
+
+## 릴리스 준비
+
+사용자가 릴리스를 결정한 경우에만 버전·빌드 번호를 변경합니다. `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, `scripts/build-local-app.sh`의 기본값을 함께 맞춥니다. 일반 수정이나 미리보기 때문에 버전을 올리지 않습니다.
+
+```sh
+swift build --disable-keychain
+scripts/run-core-checks.sh
+scripts/check-update-preferences.sh
+scripts/prepare-release.sh
+```
+
+`prepare-release.sh`는 빌드·DMG·ZIP을 만들고 **appcast.xml을 변경**합니다. 앱을 검토하는 단계에서는 실행하지 마세요. 자동 커밋·푸시·릴리스 발행은 하지 않습니다.
+
+Sparkle EdDSA 키는 Apple 인증서와 별개입니다. `PaperLibrary/Info.plist`에 공개 키가 있고, 개인 키 기본 위치는 다음과 같습니다.
 
 ```text
 ~/Library/Application Support/Paper Library Development/sparkle-private-key
 ```
 
-Keep an additional secure backup. Without this key, free builds already installed by users cannot trust a replacement key automatically.
+개인 키를 저장소나 릴리스에 넣지 마세요. 다른 Mac에서는 안전하게 복원한 키를 `SPARKLE_PRIVATE_KEY_FILE`로 지정할 수 있습니다. 생성기는 키가 앱의 공개 키와 일치하는지 확인하고 ZIP·appcast를 서명합니다. 기존 사용자의 신뢰를 깨는 키 교체를 임의로 하지 않습니다.
 
-After setting the release version and build number, run the release checks, build the ZIP, and prepare the update feed with one command:
+승인된 릴리스에는 검증한 **DMG와 정확히 그때 만든 `Paper-Library.zip` 두 파일**을 올립니다. appcast는 ZIP을 계속 가리킵니다. 서명 후 ZIP이나 appcast를 임의로 교체하지 않습니다. Sparkle을 포함하지 않았던 이전 버전은 한 번 수동 설치가 필요합니다.
 
-```sh
-scripts/prepare-release.sh
-```
+## 릴리스 문구
 
-Write release notes directly in the GitHub Release description. Start with the changes themselves; do not repeat the release name or version as a heading inside the description. Do not create or upload a separate Markdown asset. The appcast points **Version History** to `https://github.com/hoonably/paper-library/releases`.
+[릴리스 문구 기준과 초안](RELEASE_NOTES.md)을 GitHub 릴리스 본문에 사용합니다. 한 문장 요약, 주요 변경 3~5개, 필요한 설치·업데이트 안내로 구성하고 같은 버전 제목을 본문에 반복하지 않습니다. 별도 Markdown 파일을 릴리스 첨부 자산으로 올리지 않습니다.
 
-The release preparation verifies that the local signing key matches the public key embedded in the app, signs `dist/Paper-Library.zip`, and updates the repository's `appcast.xml`. Commit the version changes and generated appcast together, push the commit and tag, then upload that exact ZIP as the only asset named `Paper-Library.zip` to the matching `v<version>` GitHub Release. Do not edit the generated appcast or replace the ZIP afterward.
+## 배포 전 확인
 
-To sign on another Mac, transfer the private-key backup securely and either place it at the path above or provide its path only for the release command:
+- 새 설치: 첫 화면의 저장 위치·Documents 권한 안내, 거절 후 재시도, Codex 설정을 확인합니다.
+- 기존 설치: 논문·목록·설정이 유지되고 초기 안내가 다시 나타나지 않는지 확인합니다.
+- Finder 서비스: 일회용 PDF로 이동을 확인하고 앱 창·업데이트 창 없이 정리기가 종료되는지 확인합니다.
+- 업데이트: 알림 체크가 재실행 후 유지되고 자동 설치와 독립적인지 확인합니다. 새 버전 확인·네트워크 실패·서명 실패·실제 교체는 릴리스용 테스트 환경에서 확인합니다.
+- DMG: 응용 프로그램으로 드래그한 앱을 열어봅니다. 서명·공증 검사는 배포 유형에 맞게 수행합니다.
 
-```sh
-SPARKLE_PRIVATE_KEY_FILE='/secure/path/sparkle-private-key' scripts/generate-appcast.sh
-```
-
-## Version policy
-
-- Do not change the app version for ordinary feature or bug-fix commits.
-- Change it only when the user explicitly decides to create a new release.
-- Keep early testing releases below `1.0.0`; use `1.0.0` only after the app has been sufficiently tested.
-- Keep `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, and the defaults in `scripts/build-local-app.sh` synchronized.
-- Generate and commit `appcast.xml` only as part of a release.
-
-## Release archive
-
-1. In the target's **Signing & Capabilities**, select the Apple Developer team and replace `com.hoonably.PaperLibrary` if necessary.
-2. Update `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the target settings.
-3. Select **Any Mac (Apple Silicon, Intel)** and choose **Product → Archive** in Xcode.
-4. In Organizer, choose **Distribute App → Developer ID → Upload** to sign and submit the app for notarization.
-5. After notarization succeeds, export the app and staple the ticket:
-
-   ```sh
-   xcrun stapler staple '/path/to/Paper Library.app'
-   ```
-
-6. Run the repository's release verifier. It rejects ad-hoc or Apple Development signatures, missing bundled automation resources, unstapled apps, non-universal executables, unresolved version fields, and accidentally packaged private catalog data:
-
-   ```sh
-   scripts/verify-release-app.sh '/path/to/Paper Library.app'
-   ```
-
-7. Only after that succeeds, create the GitHub Release ZIP:
-
-   ```sh
-   ditto -c -k --sequesterRsrc --keepParent \
-     '/path/to/Paper Library.app' Paper-Library.zip
-   ```
-
-The Developer ID workflow below avoids the security override and remains the preferred option for wider distribution.
-
-Do not enable App Sandbox for this architecture. The on-demand organizer and the app intentionally share the Application Support library.
-
-## Release checks
-
-- Run `swift build`.
-- Run `scripts/run-core-checks.sh`.
-- Confirm **Paper Library → Check for Updates…** is enabled in a packaged app.
-- Confirm **Version History** opens `https://github.com/hoonably/paper-library/releases` in the default browser.
-- Test a fresh first launch, relaunching, search/filter/sort, editing a row, opening a PDF, and moving a disposable test PDF to the Trash.
-- Confirm **File → Show PDF Folder** opens the real Documents location, organized PDFs appear in Spotlight and Alfred after indexing, and existing PDF contents and catalog records are preserved during relocation. Only request indexing for the PDF folder or individual completed PDFs; never reindex an entire volume.
-- Confirm **Set Up Automation** configures on-demand execution without installing a LaunchAgent, and that the header remains **Ready for Finder** while idle. Then change model/reasoning/language and verify `Catalog/organizer-settings.json` updates without losing `automationDevice`.
-- Confirm a fresh setup defaults to **GPT-6 Luna / Extra High** (the starred recommendation). On a foreground app launch, query the configured CLI once via `model/list`; check that new models and their supported reasoning levels appear without changing the current selection. Repeatedly opening **MODEL** must not query again; its Refresh button must query on demand. A failed refresh must retain the last successful list, show an error, and offer retry. A Finder service launch must not query models.
-- From Finder, invoke **Move to Paper Library** on a disposable PDF and confirm the source disappears, the app window stays closed, an organizer process starts, and the process exits after the PDF leaves `Waiting`.
-- Verify the exported app with `codesign --verify --deep --strict --verbose=2`.
-- Confirm the app contains `Contents/Frameworks/Sparkle.framework`, and that `SUFeedURL` and `SUPublicEDKey` are present in its Info.plist.
-- Verify the executable contains both `arm64` and `x86_64` architectures.
-- Run `scripts/verify-release-app.sh` and upload only the ZIP made from that verified app.
-- Test the notarized artifact on a Mac that does not have a development certificate installed.
+저장 PDF는 `~/Documents/Paper Library/Papers`, 카탈로그와 설정은 `~/Library/Application Support/Paper Library`에 있습니다. Spotlight 검증은 해당 PDF 폴더만 대상으로 하고 전체 볼륨 재색인을 하지 않습니다.

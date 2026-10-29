@@ -52,6 +52,8 @@ final class LibraryStore: ObservableObject {
     @Published var setupLanguage = "korean"
     @Published var errorMessage: String?
     @Published var noticeMessage: String?
+    @Published private(set) var storageAccessError: String?
+    @Published private(set) var needsLibraryAccessConsent = !LibraryLayout.hasExistingCatalog()
 
     private var didPrepareLibrary = false
     private var catalogRefreshTask: Task<Void, Never>?
@@ -77,8 +79,11 @@ final class LibraryStore: ObservableObject {
     }
 
     func prepareManagedLibraryIfNeeded() {
-        guard !didPrepareLibrary else { return }
+        // Explain Documents access before the first filesystem request. Existing
+        // libraries and windowless Finder actions keep their normal startup path.
+        guard !didPrepareLibrary, !needsLibraryAccessConsent else { return }
         didPrepareLibrary = true
+        storageAccessError = nil
         do {
             isLoading = true
             defer { isLoading = false }
@@ -92,8 +97,18 @@ final class LibraryStore: ObservableObject {
             libraryURL = nil
             papers = []
             organizerStatus = .unavailable
-            errorMessage = error.localizedDescription
+            storageAccessError = error.localizedDescription
         }
+    }
+
+    func allowLibraryAccess() {
+        needsLibraryAccessConsent = false
+        didPrepareLibrary = false
+        prepareManagedLibraryIfNeeded()
+        guard hasLibrary else { return }
+        migrateLegacyAutomationIfNeeded()
+        if isAutomationConfigured { refreshModels() }
+        presentAutomationSetupIfNeeded()
     }
 
     func reload() {

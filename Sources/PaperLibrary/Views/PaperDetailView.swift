@@ -67,13 +67,15 @@ struct PaperDetailView: View {
                         metadataRow("Year", paper.year)
                         metadataRow("Track", paper.track.isEmpty ? "—" : paper.track)
                         if !paper.workshop.isEmpty { metadataRow("Workshop", paper.workshop) }
-                        metadataRow("Presentation", paper.presentation)
+                        metadataRow("Presentation", paper.presentation.trimmed.isEmpty ? "—" : paper.presentation)
                     }
                 }
 
-                DetailSection(title: "Affiliations", systemImage: "person.3") {
-                    Text(paper.affiliation)
-                        .textSelection(.enabled)
+                if !paper.affiliation.trimmed.isEmpty {
+                    DetailSection(title: "Affiliations", systemImage: "person.3") {
+                        Text(paper.affiliation)
+                            .textSelection(.enabled)
+                    }
                 }
 
                 DetailSection(title: "Library", systemImage: "archivebox") {

@@ -21,7 +21,6 @@ struct PaperLibraryApp: App {
                 Button("Check for Updates…") {
                     updateController.checkForUpdates()
                 }
-                .disabled(!updateController.canCheckForUpdates)
             }
 
             CommandGroup(after: .newItem) {
@@ -47,6 +46,46 @@ struct PaperLibraryApp: App {
                 }
             }
         }
+
+        Settings {
+            LibrarySettingsView()
+                .environmentObject(store)
+                .tint(LibraryStyle.accent)
+        }
+    }
+}
+
+private struct LibrarySettingsView: View {
+    @EnvironmentObject private var store: LibraryStore
+    @StateObject private var updates = UpdateController.shared
+
+    var body: some View {
+        TabView {
+            UpdateSettingsView(updates: updates)
+                .padding(28)
+                .tabItem { Label("Updates", systemImage: "arrow.triangle.2.circlepath") }
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Library & access").font(.title2.weight(.semibold))
+                Text("PDFs are saved in Documents / Paper Library / Papers. Catalog data and automation settings stay in Application Support on this Mac.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Button("Show PDF Folder") { store.revealPapers() }
+                    Button("Show App Storage") { store.revealStorage() }
+                }.disabled(!store.hasLibrary)
+                Divider()
+                Text("Documents access lets Paper Library save and open your PDFs. Full Disk Access is not required.")
+                    .font(.callout).fixedSize(horizontal: false, vertical: true)
+                Button("Open Privacy Settings") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")!)
+                }
+                Button("Set Up Automation…") { store.presentAutomationSetup() }
+                    .disabled(!store.hasLibrary || store.isSettingUpAutomation)
+            }
+            .frame(width: 404).padding(28)
+            .tabItem { Label("Library", systemImage: "folder") }
+        }
+        .frame(width: 460, height: 420)
     }
 }
 

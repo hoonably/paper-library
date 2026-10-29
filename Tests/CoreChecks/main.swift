@@ -25,6 +25,16 @@ func fixturePaper() -> Paper {
     )
 }
 
+final class SetupFileManager: FileManager, @unchecked Sendable {
+    let support: URL
+    var requestedDirectories: [FileManager.SearchPathDirectory] = []
+    init(support: URL) { self.support = support; super.init() }
+    override func urls(for directory: FileManager.SearchPathDirectory, in domainMask: FileManager.SearchPathDomainMask) -> [URL] {
+        requestedDirectories.append(directory)
+        return [support]
+    }
+}
+
 do {
     let original = fixturePaper()
     let encoded = try CSVCodec.encode([original])
@@ -91,6 +101,14 @@ do {
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+    let setupFiles = SetupFileManager(support: temporaryDirectory.appendingPathComponent("app-support"))
+    try check(!LibraryLayout.hasExistingCatalog(fileManager: setupFiles), "A new library bypassed the access explanation")
+    let setupRoot = try LibraryLayout.managedRoot(fileManager: setupFiles)
+    try check(!FileManager.default.fileExists(atPath: setupRoot.path), "The startup probe created storage before consent")
+    _ = try LibraryLayout.prepareLibrary(at: setupRoot)
+    try check(LibraryLayout.hasExistingCatalog(fileManager: setupFiles), "An existing library was treated as first launch")
+    try check(setupFiles.requestedDirectories.allSatisfy { $0 == .applicationSupportDirectory },
+              "The startup probe requested Documents before explaining access")
     let library = temporaryDirectory.appendingPathComponent("library", isDirectory: true)
     _ = try LibraryLayout.prepareLibrary(at: library)
     let inbox = LibraryLayout.waitingURL(in: library)

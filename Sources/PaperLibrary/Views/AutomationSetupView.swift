@@ -4,7 +4,7 @@ struct AutomationSetupView: View {
     @EnvironmentObject private var store: LibraryStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 14) {
                 Image(systemName: "bolt.fill")
                     .font(.title2)
@@ -14,8 +14,10 @@ struct AutomationSetupView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Set Up Paper Library")
                         .font(.title2.weight(.semibold))
-                    Text("One quick setup enables Finder-triggered paper organization on this Mac.")
+                    Text("Choose a language and connect Codex to organize PDFs from Finder.")
+                        .font(.callout)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -31,6 +33,14 @@ struct AutomationSetupView: View {
 
             setupSection(number: "2", title: "Codex CLI") {
                 cliStatus
+            }
+
+            Label {
+                Text("The organizer uses your signed-in Codex account to read and summarize PDFs you add. Your catalog and settings stay on this Mac.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "info.circle").foregroundStyle(.secondary)
             }
 
             Divider()
@@ -61,7 +71,8 @@ struct AutomationSetupView: View {
             }
         }
         .padding(28)
-        .frame(width: 520)
+        .frame(width: 540)
+        .tint(LibraryStyle.accent)
     }
 
     @ViewBuilder
