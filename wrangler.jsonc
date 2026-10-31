@@ -1,4 +1,4 @@
-// Configured project name; public deployment is pending.
+// Cloudflare Pages production project.
 {
   "name": "paper-library",
   "pages_build_output_dir": "./website"
