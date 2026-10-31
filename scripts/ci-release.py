@@ -24,6 +24,7 @@ try:
  run(['swift','scripts/setup-update-key.swift',str(root),'--check-only'])
  run(['python3','scripts/test-release-identity.py'])
  run(['python3','scripts/test-release-verifier.py'])
+ run(['python3','scripts/test-release-distribution.py'])
  name=cfg['app_name']
  if name=='cosMOSS':
   run(['uv','sync','--frozen'])
