@@ -22,12 +22,15 @@ fi
 swift build "${swift_build_arguments[@]}"
 
 mkdir -p "$destination_root"
+# Keep the exact resolved Sparkle tools after the isolated Swift scratch build is removed.
+ditto "$scratch_directory/artifacts/sparkle/Sparkle/bin" "$destination_root/.sparkle-tools"
 rm -rf "$app_bundle"
 rm -f "$zip_path"
 mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources" "$staged_app/Contents/Frameworks"
 
 cp "$scratch_directory/release/PaperLibrary" "$staged_app/Contents/MacOS/PaperLibrary"
 ditto "$scratch_directory/release/Sparkle.framework" "$staged_app/Contents/Frameworks/Sparkle.framework"
+cp "$scratch_directory/artifacts/sparkle/Sparkle/LICENSE" "$staged_app/Contents/Resources/Sparkle-LICENSE"
 cp "PaperLibrary/Info.plist" "$staged_app/Contents/Info.plist"
 ditto "Sources/PaperLibrary/Resources/LibrarySeed" "$staged_app/Contents/Resources/LibrarySeed"
 

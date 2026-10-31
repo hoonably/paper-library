@@ -52,7 +52,8 @@ with tempfile.TemporaryDirectory(prefix='release-chain-') as tmp:
    assert manifest(dmg_app)==manifest(current),'DMG and update ZIP contain different apps'
   finally:
    for v in volumes:run(['hdiutil','detach',v],capture_output=True)
- tools=next((p for base in [root/'.build',root/'macos/.build'] if base.exists() for p in base.glob('artifacts/**/bin/generate_appcast')),None)
+ tools=root/'dist/.sparkle-tools/generate_appcast'
+ if not tools.is_file():tools=next((p for base in [root/'.build',root/'macos/.build'] if base.exists() for p in base.glob('artifacts/**/bin/generate_appcast')),None)
  assert tools is not None
  server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Handler,directory=str(stage)))
  threading.Thread(target=server.serve_forever,daemon=True).start()

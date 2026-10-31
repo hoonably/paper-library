@@ -10,7 +10,8 @@ key=Path(os.environ.get(cfg['key_env'],str(Path.home()/'Library/Application Supp
 assert archive.is_file(),'Missing update archive'
 assert key.is_file(),'Restore the existing release key or run the signed release workflow'
 subprocess.run(['swift',str(root/'scripts/setup-update-key.swift'),str(root),'--check-only'],check=True)
-tools=next((p for base in [root/'.build',root/'macos/.build'] if base.exists() for p in base.glob('artifacts/**/bin/generate_appcast')),None)
+tools=root/'dist/.sparkle-tools/generate_appcast'
+if not tools.is_file():tools=next((p for base in [root/'.build',root/'macos/.build'] if base.exists() for p in base.glob('artifacts/**/bin/generate_appcast')),None)
 assert tools is not None,'Sparkle signing tools not found'
 with tempfile.TemporaryDirectory(prefix='signed-appcast-') as tmp:
  stage=Path(tmp)
