@@ -23,6 +23,7 @@ def run(args,**kw):subprocess.run(args,check=True,**kw)
 try:
  run(['swift','scripts/setup-update-key.swift',str(root),'--check-only'])
  run(['python3','scripts/test-release-identity.py'])
+ run(['python3','scripts/test-release-verifier.py'])
  name=cfg['app_name']
  if name=='cosMOSS':
   run(['uv','sync','--frozen'])

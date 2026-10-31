@@ -7,14 +7,15 @@ import FoundationXML
 
 final class EnclosureReader: NSObject, XMLParserDelegate {
     let filename: String
-    var signature: String?
-    var length: Int?
+    var candidates: [(signature: String, length: Int)] = []
     init(filename: String) { self.filename = filename }
     func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?,
                 qualifiedName: String?, attributes: [String: String]) {
         if element == "enclosure", let url = attributes["url"], URL(string: url)?.lastPathComponent == filename {
-            signature = attributes["sparkle:edSignature"]
-            length = attributes["length"].flatMap(Int.init)
+            if let signature = attributes["sparkle:edSignature"],
+               let length = attributes["length"].flatMap(Int.init) {
+                candidates.append((signature, length))
+            }
         }
     }
 }
@@ -38,10 +39,14 @@ let archiveURL = URL(fileURLWithPath: CommandLine.arguments[3])
 let reader = EnclosureReader(filename: archiveURL.lastPathComponent)
 let parser = XMLParser(data: feed)
 parser.delegate = reader
-guard parser.parse(), let encoded = reader.signature,
-      let archiveSignature = Data(base64Encoded: encoded) else { fatalError("Missing archive signature") }
+guard parser.parse(), !reader.candidates.isEmpty else { fatalError("Missing archive signature") }
 let archive = try Data(contentsOf: archiveURL)
-guard archive.count == reader.length, key.isValidSignature(archiveSignature, for: archive) else {
+// Different releases can deliberately keep the same archive basename. Select
+// the enclosure by its actual signed bytes, independently of feed item order.
+guard reader.candidates.contains(where: { candidate in
+    guard archive.count == candidate.length, let signature = Data(base64Encoded: candidate.signature) else { return false }
+    return key.isValidSignature(signature, for: archive)
+}) else {
     fputs("Invalid update archive signature\n", stderr); exit(1)
 }
 print("Verified feed and archive with the embedded public key")
