@@ -17,9 +17,9 @@ Finder에서 논문을 추가하면 Codex가 요약과 출판 정보를 정리�
 
 ## 설치·시작하기
 
-macOS 14 이상이 설치된 Apple Silicon Mac과 로그인된 [Codex CLI](https://developers.openai.com/codex/cli)가 필요합니다. 현재는 초기 베타 버전이에요.
+macOS 14 이상이 설치된 Apple Silicon Mac과 로그인된 [Codex CLI](https://developers.openai.com/codex/cli)가 필요합니다.
 
-1. [최신 릴리스](https://github.com/hoonably/paper-library/releases/latest)에서 DMG를 받아 열고, **Paper Library를 Applications로 드래그**해요. 이전 릴리스에 ZIP만 있다면 압축을 풀어 앱을 응용 프로그램 폴더로 옮겨주세요.
+1. [최신 릴리스](https://github.com/hoonably/paper-library/releases/latest)에서 DMG를 받아 열고, **Paper Library를 Applications로 드래그**해요.
 2. 앱을 열고 저장 위치 안내에서 **Continue**를 눌러요. macOS가 문서 폴더 접근을 요청하면 허용해요.
 3. 요약 언어를 선택하고, 필요하면 **Sign In**으로 로그인해요. **Codex CLI is ready**가 표시되면 **Finish Setup**을 눌러요.
 4. Finder에서 PDF를 우클릭하고 **서비스 → Move to Paper Library**를 선택해요.
@@ -40,7 +40,7 @@ PDF는 `문서/Paper Library/Papers`, 목록과 설정은 이 Mac의 앱 전용 
 
 **Paper Library → Check for Updates…** 또는 **Settings → Updates**에서 새 버전을 확인해요. **Notify me about updates automatically**를 켜면 앱 실행 중 새 버전을 자동으로 확인하고 알려줘요. 이 체크는 자동 다운로드·설치를 켜지 않습니다.
 
-업데이트는 기존 Sparkle 서명 검증을 거쳐 설치됩니다. 앱에서 진행 중인 자동화 설정·라이브러리 수정은 마친 뒤 앱을 다시 시작해요. 새로 설치할 때는 DMG를, 앱 내부 업데이트에는 ZIP을 사용해요.
+업데이트는 서명을 확인한 뒤 설치합니다. 앱에서 진행 중인 자동화 설정·라이브러리 수정은 마친 뒤 앱을 다시 시작해요. 새로 설치할 때는 DMG를, 앱 내부 업데이트에는 ZIP을 사용해요.
 
 ## 개발·배포 안내
 

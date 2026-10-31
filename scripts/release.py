@@ -140,9 +140,12 @@ def publish(client,reset):
   if SOURCE!=PUBLIC:
    for old_release in client.request('/repos/'+SOURCE+'/releases?per_page=100'):
     client.request('/repos/'+SOURCE+'/releases/'+str(old_release['id']),'DELETE')
- client.repo('/git/refs/tags/'+state['stage_tag'],method='DELETE',allow404=True)
  state.update({'published_url':release['html_url'],'feed_commit':feed_result['commit']['sha'],'published':True})
  (DIST/'release-run.json').write_text(json.dumps(state,indent=2)+'\n')
+ # A draft may never create its temporary tag. Check before cleanup; GitHub
+ # returns 422 for deleting a nonexistent ref rather than 404.
+ if client.repo('/git/ref/tags/'+state['stage_tag'],allow404=True):
+  client.repo('/git/refs/tags/'+state['stage_tag'],method='DELETE',allow404=True)
  print('Published',release['html_url'],'and the verified signed feed')
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('action',choices=['prepare','status','download','stage','publish'])

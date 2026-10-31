@@ -30,7 +30,7 @@ scripts/build-mac-dmg.sh '/path/to/Paper Library.app' '/path/to/output'
 
 ## 서명과 공증
 
-기본 스크립트는 ad-hoc 서명한 초기 베타 빌드를 만듭니다. **Apple Developer ID 서명·공증을 받은 배포물은 아닙니다.** 릴리스 설명에 이 상태를 명확히 적고, 실행이 막힌 경우 개인정보 보호 및 보안의 **그래도 열기**를 안내합니다.
+현재 중앙 배포와 기본 로컬 스크립트는 ad-hoc 서명을 사용합니다. **Apple Developer ID 서명·공증을 받은 배포물은 아닙니다.** 실행이 막힌 경우 README의 개인정보 보호 및 보안 → **그래도 열기** 안내를 사용합니다.
 
 넓은 배포에는 Apple Developer Program 계정, Developer ID 인증서와 전체 Xcode를 사용하세요. `PaperLibrary.xcodeproj`에서 보관·Developer ID 내보내기·공증을 마친 뒤 티켓을 붙입니다.
 
@@ -45,26 +45,21 @@ scripts/verify-release-app.sh '/path/to/Paper Library.app'
 
 ## 릴리스 준비
 
-사용자가 릴리스를 결정한 경우에만 버전·빌드 번호를 변경합니다. `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`, `scripts/build-local-app.sh`의 기본값을 함께 맞춥니다. 일반 수정이나 미리보기 때문에 버전을 올리지 않습니다.
+사용자가 릴리스를 요청했을 때 `release.json`의 version과 build를 올리고 main에 푸시합니다. build는 표시 버전과 별개로 이전 배포보다 항상 커야 합니다. Xcode 프로젝트의 표시 값도 같은 버전에 맞춥니다. 일반 수정이나 미리보기 때문에 버전을 올리지 않습니다.
 
 ```sh
-swift build --disable-keychain
-scripts/run-core-checks.sh
-scripts/check-update-preferences.sh
-scripts/prepare-release.sh
+python3 scripts/release.py prepare
+python3 scripts/release.py status
+python3 scripts/release.py download
+python3 scripts/release.py stage
+python3 scripts/release.py publish
 ```
 
-`prepare-release.sh`는 빌드·DMG·ZIP을 만들고 **appcast.xml을 변경**합니다. 앱을 검토하는 단계에서는 실행하지 마세요. 자동 커밋·푸시·릴리스 발행은 하지 않습니다.
+중앙 빌드가 고정 키 일치, DMG·ZIP 앱 일치, 실제 다음 버전 교체와 변조 거절을 검증합니다. publish는 설치 파일의 익명 다운로드·서명을 확인한 뒤 appcast를 마지막에 게시합니다. 기존 버전이나 태그는 덮어쓰지 않습니다.
 
-Sparkle EdDSA 키는 Apple 인증서와 별개입니다. `PaperLibrary/Info.plist`에 공개 키가 있고, 개인 키 기본 위치는 다음과 같습니다.
+공개키는 `PaperLibrary/UpdatePublicKey.txt`에 고정하고 빌드할 때 앱에 넣습니다. 개인키는 Git에 포함하지 않습니다. 두 Mac의 로컬 복원과 중앙 Actions secret은 [서명된 릴리스 절차](SIGNED_RELEASES.md)를 따릅니다. 키가 없거나 공개키와 다르면 새 키로 대체하지 않고 중단합니다.
 
-```text
-~/Library/Application Support/Paper Library Development/sparkle-private-key
-```
-
-개인 키를 저장소나 릴리스에 넣지 마세요. 다른 Mac에서는 안전하게 복원한 키를 `SPARKLE_PRIVATE_KEY_FILE`로 지정할 수 있습니다. 생성기는 키가 앱의 공개 키와 일치하는지 확인하고 ZIP·appcast를 서명합니다. 기존 사용자의 신뢰를 깨는 키 교체를 임의로 하지 않습니다.
-
-승인된 릴리스에는 검증한 **DMG와 정확히 그때 만든 `Paper-Library.zip` 두 파일**을 올립니다. appcast는 ZIP을 계속 가리킵니다. 서명 후 ZIP이나 appcast를 임의로 교체하지 않습니다. Sparkle을 포함하지 않았던 이전 버전은 한 번 수동 설치가 필요합니다.
+로컬 `scripts/prepare-release.sh`는 검토용 DMG·ZIP과 appcast를 만듭니다. 앱만 검토할 때는 `scripts/build-local-app.sh`를 사용하고, 로컬 생성물을 공식 중앙 배포 대신 게시하지 않습니다.
 
 ## 릴리스 문구
 
