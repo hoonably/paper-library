@@ -7,3 +7,6 @@ DerivedData/
 *.xcarchive
 xcuserdata/
 *.xcuserstate
+
+sparkle-private-key
+sparkle-private-key.*

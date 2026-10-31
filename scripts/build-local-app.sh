@@ -12,6 +12,8 @@ scratch_directory="$temporary_directory/swift-build"
 trap 'rm -rf "$temporary_directory"' EXIT
 
 cd "$repository_root"
+release_version="$(python3 -c 'import json; print(json.load(open("release.json"))["version"])')"
+release_build="$(python3 -c 'import json; print(json.load(open("release.json"))["build"])')"
 swift_build_arguments=(--disable-keychain -c release --scratch-path "$scratch_directory")
 # Allow a stable SDK when a beta Command Line Tools SDK is incomplete.
 if [[ -n "${MACOS_SDK_PATH:-}" ]]; then
@@ -36,8 +38,8 @@ fi
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable PaperLibrary" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${BUNDLE_ID:-com.hoonably.PaperLibrary}" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleName Paper Library" "$staged_app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION:-0.5.0}" "$staged_app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-7}" "$staged_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION:-$release_version}" "$staged_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_NUMBER:-$release_build}" "$staged_app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion 14.0" "$staged_app/Contents/Info.plist"
 
 iconset="$temporary_directory/AppIcon.iconset"

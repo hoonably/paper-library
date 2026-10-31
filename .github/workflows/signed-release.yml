@@ -1,0 +1,37 @@
+name: Signed macOS release
+on:
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: Create a fresh v1.0.0 feed after explicit reset approval
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: signed-release-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare Python and uv
+        run: |
+          python3 -m venv "$RUNNER_TEMP/release-tools"
+          "$RUNNER_TEMP/release-tools/bin/pip" install 'uv==0.9.25'
+          echo "$RUNNER_TEMP/release-tools/bin" >> "$GITHUB_PATH"
+      - name: Build and verify the signed release chain
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          RELEASE_BASELINE: ${{ inputs.baseline }}
+        run: python3 scripts/ci-release.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-macOS-release
+          path: dist/verified-release/
+          if-no-files-found: error
+          retention-days: 14

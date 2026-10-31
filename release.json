@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "build": 1000002,
+  "repository": "hoonably/paper-library",
+  "app_name": "Paper Library",
+  "public_key_file": "PaperLibrary/UpdatePublicKey.txt",
+  "key_service": "io.github.hoonably.paper-library.sparkle-update-key",
+  "key_directory": "Paper Library Development",
+  "key_env": "SPARKLE_PRIVATE_KEY_FILE",
+  "update_archive": "Paper-Library.zip",
+  "installer": "Paper-Library-v{version}-macos-arm64.dmg",
+  "bundle_identifier": "com.hoonably.PaperLibrary",
+  "source_repository": "hoonably/paper-library"
+}
