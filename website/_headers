@@ -5,3 +5,7 @@
 
 /project-directory/*
   Cache-Control: public, max-age=300
+
+/embed/*
+  ! X-Frame-Options
+  Content-Security-Policy: frame-ancestors 'self' https://jeonghoonpark.com https://www.jeonghoonpark.com

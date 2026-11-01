@@ -1,0 +1,160 @@
+.product-paper-library {
+  --cover-paper: #eaf0dd;
+  --cover-ink: #283421;
+  --accent: #41623b;
+}
+
+.paper-cover {
+  background: var(--cover-paper);
+  color: var(--cover-ink);
+}
+
+.paper-opening { text-align: center; }
+
+.paper-opening h1 {
+  margin: 0;
+  font-size: clamp(38px, 5.1vw, 76px);
+  line-height: 1.22;
+  font-weight: 750;
+  letter-spacing: -.04em;
+  text-wrap: balance;
+  word-break: keep-all;
+}
+
+.paper-intro {
+  margin: 18px auto 0;
+  color: #4c5745;
+  font-size: clamp(15px, 1.35vw, 19px);
+  line-height: 1.75;
+  text-wrap: balance;
+  word-break: keep-all;
+}
+
+.paper-shelf {
+  min-width: 0;
+  max-width: 880px;
+  border-top: 3px solid var(--cover-ink);
+}
+
+.paper-shelf-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 13px 0;
+  border-bottom: 1px solid #909e82;
+}
+
+.paper-shelf-heading h2 { font-size: 16px; font-weight: 700; }
+.paper-shelf-heading p,
+.paper-year,
+.paper-citation > span,
+.paper-meta {
+  color: #536247;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.paper-record {
+  --citation-gutter: 60px;
+  border-bottom: 1px solid #a9b59c;
+}
+
+.paper-record summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--citation-gutter) minmax(0, 1fr) 20px;
+  align-items: baseline;
+  padding: 14px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.paper-record summary::-webkit-details-marker { display: none; }
+.paper-record summary:focus-visible, .paper-annotation a:focus-visible {
+  outline: 2px solid #41623b;
+  outline-offset: 3px;
+}
+
+.paper-record summary:hover cite { color: #546c44; }
+.paper-year {
+  font: 600 13px/1.5 ui-monospace, monospace;
+  letter-spacing: .025em;
+}
+
+.paper-citation { display: grid; gap: 4px; padding-right: 10px; }
+.paper-citation cite {
+  font-family: "Iowan Old Style", "Baskerville", Georgia, serif;
+  font-size: clamp(23px, 2vw, 32px);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: -.035em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.paper-record[open] .paper-citation cite {
+  font-size: clamp(28px, 2.6vw, 38px);
+}
+
+.paper-toggle {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  align-self: start;
+  margin-top: 6px;
+}
+
+.paper-toggle::before, .paper-toggle::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 1px;
+  width: 14px;
+  height: 1.5px;
+  background: var(--cover-ink);
+}
+
+.paper-toggle::after { transform: rotate(90deg); }
+.paper-record[open] .paper-toggle::after { display: none; }
+.paper-annotation {
+  padding: 0 20px 22px var(--citation-gutter);
+  max-width: 65ch;
+}
+
+.paper-meta { margin: 0 0 8px; font-weight: 650; }
+.paper-meta span { margin: 0 .35em; color: #718061; }
+.paper-annotation > p:not(.paper-meta) {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.75;
+  word-break: keep-all;
+}
+
+.paper-annotation a {
+  display: inline-flex;
+  align-items: center;
+  gap: .45em;
+  min-height: 32px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 880px) {
+  .paper-record { --citation-gutter: 46px; }
+}
+
+@media (max-width: 540px) {
+  .paper-opening h1 { font-size: clamp(35px, 9vw, 46px); }
+  .paper-intro { margin-top: 16px; }
+  .paper-intro br { display: none; }
+  .paper-annotation { padding-right: 8px; }
+}
+
+@media (max-width: 400px) {
+  .paper-record { --citation-gutter: 39px; }
+  .paper-record summary { grid-template-columns: var(--citation-gutter) minmax(0, 1fr) 14px; }
+  .paper-annotation { padding-left: 0; }
+}

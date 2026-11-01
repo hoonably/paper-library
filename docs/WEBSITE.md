@@ -12,4 +12,4 @@
 
 미리보기는 `jeonghoonpark.com/scripts/preview-project-sites.py`를 실행한 뒤 `http://127.0.0.1:4175/`에서 엽니다. 검토 허브는 `http://127.0.0.1:4170/`이며, 각 제품 사이트는 실제 Pages 배포와 같은 독립 포트의 루트(`/`)를 사용합니다. 이 저장소만 따로 열 때는 `python3 -m http.server 4175 --bind 127.0.0.1 --directory website`를 실행합니다.
 
-공통 ‘다른 프로젝트’ 메뉴는 카탈로그의 실제 Pages 주소로 연결됩니다. cosMOSS는 `https://cosmoss-app.pages.dev/`, Pickly는 `https://pickly-app.pages.dev/`이며 나머지는 저장소 이름을 사용합니다. 로컬 주소는 검토 허브에서만 사용합니다.
+공통 ‘개발자의 다른 프로젝트’ 메뉴는 카탈로그의 실제 Pages 주소로 연결됩니다. cosMOSS는 `https://cosmoss-app.pages.dev/`, Pickly는 `https://pickly-app.pages.dev/`이며 나머지는 저장소 이름을 사용합니다. 로컬 주소는 검토 허브에서만 사용합니다.
