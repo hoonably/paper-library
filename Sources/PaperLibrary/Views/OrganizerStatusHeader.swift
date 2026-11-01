@@ -1,7 +1,9 @@
 import AppKit
 import SwiftUI
 
-struct OrganizerStatusHeader: View {
+struct OrganizerStatusHeader<SearchField: View>: View {
+    @ViewBuilder let searchField: SearchField
+    @State private var showsSettings = false
     @EnvironmentObject private var store: LibraryStore
     @State private var isShowingLibraryCommand = false
 
@@ -46,26 +48,39 @@ struct OrganizerStatusHeader: View {
             Spacer(minLength: 8)
                 .overlay(WindowDragArea())
 
-            ModelSettingMenu()
-            .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
+            searchField
+                .frame(maxWidth: 460)
+                .layoutPriority(1)
+            Spacer(minLength: 8)
+                .overlay(WindowDragArea())
 
-            SettingMenu(
-                title: "REASONING",
-                value: store.organizerStatus.reasoning,
-                choices: store.availableReasoningEfforts,
-                displayName: reasoningName,
-                recommendedValue: OrganizerRecommendation.reasoning
-            ) { store.updateOrganizerSetting(.reasoning, to: $0) }
+            Button("Organizer settings", systemImage: "slider.horizontal.3") {
+                showsSettings.toggle()
+            }
             .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
-
-            SettingMenu(
-                title: "LANGUAGE",
-                value: store.organizerStatus.language,
-                choices: OrganizerSetting.language.allowedValues,
-                displayName: languageName,
-                recommendedValue: nil
-            ) { store.updateOrganizerSetting(.language, to: $0) }
-            .disabled(!store.isAutomationConfigured || store.isSettingUpAutomation)
+            .popover(isPresented: $showsSettings) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Organizer settings").font(.headline)
+                    Text("Used when adding new PDFs.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    ModelSettingMenu()
+                    SettingMenu(
+                        title: "REASONING",
+                        value: store.organizerStatus.reasoning,
+                        choices: store.availableReasoningEfforts,
+                        displayName: reasoningName,
+                        recommendedValue: OrganizerRecommendation.reasoning
+                    ) { store.updateOrganizerSetting(.reasoning, to: $0) }
+                    SettingMenu(
+                        title: "LANGUAGE",
+                        value: store.organizerStatus.language,
+                        choices: OrganizerSetting.language.allowedValues,
+                        displayName: languageName,
+                        recommendedValue: nil
+                    ) { store.updateOrganizerSetting(.language, to: $0) }
+                }
+                .padding(18)
+            }
 
             Button {
                 isShowingLibraryCommand.toggle()

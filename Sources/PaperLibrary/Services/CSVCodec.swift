@@ -66,7 +66,7 @@ enum CSVCodec {
             guard seenFiles.insert(file).inserted else { throw CatalogCSVError.duplicateFile(file) }
 
             let rawPresentation = record["presentation"] ?? ""
-            guard ["Preprint", "Poster", "Spotlight", "Oral"].contains(rawPresentation) else {
+            guard ["", "Preprint", "Poster", "Spotlight", "Oral"].contains(rawPresentation) else {
                 throw CatalogCSVError.invalidPresentation(row: rowNumber, value: rawPresentation)
             }
 
@@ -101,7 +101,7 @@ enum CSVCodec {
             guard paper.hasValidCatalogFilePath else {
                 throw CatalogCSVError.invalidFile(row: row, path: paper.file)
             }
-            guard paper.year.range(of: #"^\d{4}$"#, options: .regularExpression) != nil else {
+            guard paper.year.isEmpty || paper.year.range(of: #"^\d{4}$"#, options: .regularExpression) != nil else {
                 throw CatalogCSVError.invalidYear(row: row)
             }
             let values: [String: String] = [

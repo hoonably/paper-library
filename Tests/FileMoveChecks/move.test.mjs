@@ -8,6 +8,28 @@ import test from "node:test";
 
 const script = fileURLToPath(new URL("../../Sources/PaperLibrary/Resources/LibrarySeed/Automation/paper-organizer.mjs", import.meta.url));
 
+test("organizer preserves unknown metadata when normalizing a recovered catalog", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "paper-library-recovered-"));
+  try {
+    fs.mkdirSync(path.join(root, "Papers", "Systems"), { recursive: true });
+    fs.mkdirSync(path.join(root, "Catalog"));
+    const catalog = path.join(root, "Catalog", "papers.csv");
+    const headers = "category,subcategory,venue,year,track,workshop,presentation,title,authors,affiliation,summary,novelty,site,added_at,file\n";
+    const record = '"Systems","","",,"","","","Recovered Title","","","Personal note","","","2026-11-01","Papers/Systems/original.pdf"\n';
+    fs.writeFileSync(catalog, headers + record);
+    fs.writeFileSync(path.join(root, "Papers", "Systems", "original.pdf"), "original PDF bytes");
+    const normalize = () => spawnSync(process.execPath, [script, "normalize", "--root", root], { encoding: "utf8" });
+    const result = normalize();
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(fs.readFileSync(catalog, "utf8"), headers + record.replace("original.pdf", "Recovered Title.pdf"));
+    assert.equal(fs.readFileSync(path.join(root, "Papers", "Systems", "Recovered Title.pdf"), "utf8"), "original PDF bytes");
+    assert.equal(normalize().status, 0);
+    assert.equal(fs.readFileSync(catalog, "utf8").split("\n").length, 3);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 function place(root, from, to) {
   return spawnSync(process.execPath, [script, "place", "--root", root, "--file", from, "--to", to], {
     encoding: "utf8",

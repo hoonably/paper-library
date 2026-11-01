@@ -114,9 +114,8 @@ def wait_for_public_file(url,digest,destination,timeout=240):
   if result.returncode==0 and hashlib.sha256(destination.read_bytes()).hexdigest()==digest:return
   if time.monotonic()>=deadline:raise RuntimeError('Public deployment did not serve the verified bytes: '+url)
   time.sleep(3)
-def managed_block(path,content):
+def managed_block(old,content):
  start='# BEGIN APP RELEASE\n';end='# END APP RELEASE\n'
- old=path.read_text() if path.exists() else ''
  if start in old:
   before,rest=old.split(start,1);_managed,after=rest.split(end,1);old=before+after
  return (old.rstrip()+'\n\n' if old.strip() else '')+start+content.rstrip()+'\n'+end
@@ -147,9 +146,11 @@ def publish_cloudflare(client,out,report,release,state):
  page='<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+html.escape(CFG['app_name'])+'</title><style>body{font:17px/1.7 system-ui,sans-serif;color:#243c32;background:#f7f9f6;max-width:680px;margin:12vh auto;padding:24px}</style><p>'+html.escape(notes)+'</p></html>'
  changes[str(folder/'updates'/('v'+CFG['version']+'.html'))]=page.encode()
  redirect='/downloads/latest.dmg /downloads/v'+CFG['version']+'/'+quote(report['installer'])+' 302'
- changes[str(folder/'_redirects')]=managed_block(ROOT/folder/'_redirects',redirect).encode()
+ path=ROOT/folder/'_redirects'
+ changes[str(folder/'_redirects')]=managed_block(path.read_text() if path.exists() else '',redirect).encode()
  headers='/downloads/v*\n  Cache-Control: public, max-age=31536000, immutable\n/downloads/latest.dmg\n  Cache-Control: no-store\n/updates/*\n  Cache-Control: no-store'
- changes[str(folder/'_headers')]=managed_block(ROOT/folder/'_headers',headers).encode()
+ path=ROOT/folder/'_headers'
+ changes[str(folder/'_headers')]=managed_block(path.read_text() if path.exists() else '',headers).encode()
  state['download_commit']=commit_site_files(changes,'Publish v'+CFG['version']+' installers on Cloudflare')
  (DIST/'release-run.json').write_text(json.dumps(state,indent=2)+'\n')
  with tempfile.TemporaryDirectory(prefix='cloudflare-release-verify-') as tmp:
@@ -170,6 +171,11 @@ def publish_cloudflare(client,out,report,release,state):
   path=Path(tmp)/'appcast.xml';wait_for_public_file(CFG['feed_url'],hashlib.sha256(feed).hexdigest(),path)
   subprocess.run(['swift',str(ROOT/'scripts/verify-update.swift'),str(ROOT/CFG['public_key_file']),str(path),str(out/report['archive'])],check=True)
  return state['feed_commit']
+def put_main_file(client,path,data,previous,message):
+ body={'message':message,'content':base64.b64encode(data).decode(),'branch':'main'}
+ if previous:body['sha']=previous['sha']
+ return client.repo('/contents/'+path,method='PUT',body=body)['commit']['sha']
+
 def publish(client,reset):
  state=saved();out=DIST/'verified-release';report=validate(out,state)
  assert state.get('release_id'),'Stage the verified artifact first'
@@ -196,11 +202,15 @@ def publish(client,reset):
     subprocess.run(['curl','--fail','--location','--silent','--show-error','--retry','3','--max-time','120',url,'--output',str(downloaded)],check=True)
     assert hashlib.sha256(downloaded.read_bytes()).hexdigest()==digest,'Public download differs'
     if name==report['archive']:subprocess.run(['swift',str(ROOT/'scripts/verify-update.swift'),str(ROOT/CFG['public_key_file']),str(out/'appcast.xml'),str(downloaded)],check=True)
-  feed=out/'appcast.xml';previous=client.repo('/contents/appcast.xml',allow404=True)
-  body={'message':f"Publish signed {tag} update feed",'content':base64.b64encode(feed.read_bytes()).decode(),'branch':'main'}
-  if previous:body['sha']=previous['sha']
-  feed_result=client.repo('/contents/appcast.xml',method='PUT',body=body)
-  feed_commit=feed_result['commit']['sha']
+  redirect_file=CFG['site_directory']+'/_redirects'
+  previous=client.repo('/contents/'+redirect_file+'?ref=main',allow404=True)
+  old_rules=base64.b64decode(previous['content']).decode() if previous else ''
+  installer_url=f'https://github.com/{REPOSITORY}/releases/download/{tag}/'+quote(report['installer'])
+  rules=managed_block(old_rules,'/downloads/latest.dmg '+installer_url+' 302')
+  if rules!=old_rules:
+   put_main_file(client,redirect_file,rules.encode(),previous,f"Link the website to the verified {tag} DMG")
+  previous=client.repo('/contents/appcast.xml?ref=main',allow404=True)
+  feed_commit=put_main_file(client,'appcast.xml',(out/'appcast.xml').read_bytes(),previous,f"Publish signed {tag} update feed")
  if reset:
   for old_release in old:
    if old_release['id'] not in {release['id'],prior['id'] if prior else None}:client.repo('/releases/'+str(old_release['id']),method='DELETE',allow404=True)

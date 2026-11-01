@@ -66,9 +66,7 @@ struct Paper: Identifiable, Codable, Hashable {
 
     func validationError() -> String? {
         let required: [(String, String)] = [
-            ("Category", category), ("Venue", venue), ("Year", year),
-            ("Presentation", presentation), ("Title", title), ("Authors", authors),
-            ("Summary", summary), ("Novelty", novelty),
+            ("Category", category), ("Title", title),
             ("Date added", addedAt), ("PDF path", file),
         ]
         if let missing = required.first(where: { $0.1.trimmed.isEmpty }) {
@@ -77,13 +75,13 @@ struct Paper: Identifiable, Codable, Hashable {
         guard hasValidCatalogFilePath else {
             return "PDF path must use Papers/Field/Title.pdf or Papers/Field/Subfolder/Title.pdf."
         }
-        guard year.range(of: #"^\d{4}$"#, options: .regularExpression) != nil else {
+        guard year.isEmpty || year.range(of: #"^\d{4}$"#, options: .regularExpression) != nil else {
             return "Year must contain four digits."
         }
-        guard ["Preprint", "Poster", "Spotlight", "Oral"].contains(presentation) else {
+        guard ["", "Preprint", "Poster", "Spotlight", "Oral"].contains(presentation) else {
             return "Presentation must be Preprint, Poster, Spotlight, or Oral."
         }
-        if presentation != "Preprint" && track.trimmed.isEmpty {
+        if !presentation.isEmpty && presentation != "Preprint" && track.trimmed.isEmpty {
             return "A published paper needs a track."
         }
         if track == "Workshop" && workshop.trimmed.isEmpty {

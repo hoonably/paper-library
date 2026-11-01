@@ -1,4 +1,5 @@
 import Foundation
+import PDFKit
 
 enum CheckFailure: Error, CustomStringConvertible {
     case failed(String)
@@ -33,6 +34,22 @@ final class SetupFileManager: FileManager, @unchecked Sendable {
         requestedDirectories.append(directory)
         return [support]
     }
+}
+
+final class RejectedStorageLinkFileManager: FileManager, @unchecked Sendable {
+    override func createSymbolicLink(at url: URL, withDestinationURL destinationURL: URL) throws {
+        throw CocoaError(.fileWriteNoPermission)
+    }
+}
+
+func writeRecoveryPDF(at url: URL, title: String = "", author: String = "") throws -> Data {
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let document = PDFDocument()
+    document.insert(PDFPage(), at: 0)
+    document.documentAttributes = [PDFDocumentAttribute.titleAttribute: title, PDFDocumentAttribute.authorAttribute: author]
+    guard let data = document.dataRepresentation() else { throw CheckFailure.failed("Cannot create recovery PDF fixture") }
+    try data.write(to: url)
+    return data
 }
 
 do {
@@ -184,8 +201,9 @@ do {
     do {
         _ = try PaperStorage.prepare(in: conflictLibrary, at: publicPapers, lockDirectory: storageLock)
         throw CheckFailure.failed("An existing destination was merged or overwritten")
-    } catch is CheckFailure { throw CheckFailure.failed("An existing destination was merged or overwritten") }
-      catch { /* Expected conflict. */ }
+    } catch StorageError.destinationConflict(let path) {
+        try check(path == publicPapers.path, "The folder shown for resolving the conflict was incorrect")
+    }
     try check(try String(contentsOf: conflictSource, encoding: .utf8) == "keep", "A conflicting migration lost its source")
 
     try FileManager.default.createDirectory(at: storageLock, withIntermediateDirectories: true)
@@ -204,6 +222,63 @@ do {
     try CSVCodec.encode([publicPaper]).write(to: LibraryLayout.catalogCSVURL(in: recoveredLibrary), atomically: true, encoding: .utf8)
     try check(try PaperStorage.prepare(in: recoveredLibrary, at: publicPapers, lockDirectory: storageLock), "An interrupted directory move could not be recovered")
     try check(publicPaper.pdfURL(in: recoveredLibrary) == publicPaper.pdfURL(in: library), "Recovered storage points to the wrong PDF")
+
+    let lostCatalogLibrary = temporaryDirectory.appendingPathComponent("lost-catalog-library")
+    _ = try LibraryLayout.prepareLibrary(at: lostCatalogLibrary)
+    let existingShelf = temporaryDirectory.appendingPathComponent("existing-documents")
+    let firstPDF = existingShelf.appendingPathComponent("Systems/Inference/first.pdf")
+    let secondPDF = existingShelf.appendingPathComponent("Robotics/Filename Title.PDF")
+    let firstPDFBytes = try writeRecoveryPDF(at: firstPDF, title: "Original PDF Title", author: "Original Author")
+    let secondPDFBytes = try writeRecoveryPDF(at: secondPDF)
+    let unreadablePDF = existingShelf.appendingPathComponent("Robotics/Missing Metadata.pdf")
+    try Data("No readable PDF metadata".utf8).write(to: unreadablePDF)
+    try check(PaperStorage.recoveryMetadata(at: firstPDF, fileFlags: UInt32(SF_DATALESS)) == nil, "An iCloud placeholder was opened to read PDF contents")
+    try check(PaperStorage.recoveryMetadata(at: firstPDF, fileFlags: 0)?[PDFDocumentAttribute.titleAttribute] as? String == "Original PDF Title", "A locally available PDF did not retain its metadata")
+    try Data("Finder metadata".utf8).write(to: existingShelf.appendingPathComponent(".DS_Store"))
+    let outsidePDF = temporaryDirectory.appendingPathComponent("outside/Private.pdf")
+    _ = try writeRecoveryPDF(at: outsidePDF)
+    try FileManager.default.createSymbolicLink(at: existingShelf.appendingPathComponent("Outside"), withDestinationURL: outsidePDF.deletingLastPathComponent())
+    try FileManager.default.createSymbolicLink(at: existingShelf.appendingPathComponent("Systems/linked.pdf"), withDestinationURL: outsidePDF)
+    let recoveredCSV = LibraryLayout.catalogCSVURL(in: lostCatalogLibrary)
+    try check(try PaperStorage.prepare(in: lostCatalogLibrary, at: existingShelf, lockDirectory: storageLock), "An empty local catalog could not recover the existing Documents shelf")
+    var recoveredPapers = try CSVCodec.decode(String(contentsOf: recoveredCSV, encoding: .utf8))
+    try check(recoveredPapers.count == 3, "Recovery missed a PDF or followed a hidden file or symlink")
+    let firstIndex = recoveredPapers.firstIndex(where: { $0.file == "Papers/Systems/Inference/first.pdf" })!
+    let recoveredFirst = recoveredPapers[firstIndex]
+    try check(recoveredFirst.title == "Original PDF Title" && recoveredFirst.authors == "Original Author", "Recovery did not prefer embedded PDF metadata")
+    try check(recoveredFirst.category == "Systems" && recoveredFirst.subcategory == "Inference", "Recovery lost the existing folder classification")
+    try check(recoveredPapers.contains(where: { $0.title == "Filename Title" }), "Missing PDF metadata did not fall back to the filename")
+    try check(recoveredPapers.contains(where: { $0.title == "Missing Metadata" }), "A PDF metadata read failure prevented filename recovery")
+    try check(recoveredFirst.year.isEmpty && recoveredFirst.venue.isEmpty && recoveredFirst.presentation.isEmpty && recoveredFirst.summary.isEmpty, "Recovery invented missing publication metadata")
+    try check(recoveredFirst.validationError() == nil, "Recovered metadata cannot be edited with unknown publication fields")
+    try check(try CSVCodec.decode(CSVCodec.encode(recoveredPapers)) == recoveredPapers, "Unknown metadata did not survive a CSV round-trip")
+    try check(recoveredFirst.pdfURL(in: lostCatalogLibrary) == firstPDF, "The recovered PDF cannot be opened through the private storage link")
+    try check(try Data(contentsOf: firstPDF) == firstPDFBytes && Data(contentsOf: secondPDF) == secondPDFBytes, "Recovery modified existing PDF content")
+    let firstRecoveryCSV = try Data(contentsOf: recoveredCSV)
+    _ = try PaperStorage.prepare(in: lostCatalogLibrary, at: existingShelf, lockDirectory: storageLock)
+    try check(try Data(contentsOf: recoveredCSV) == firstRecoveryCSV, "Retrying recovery rewrote the catalog or duplicated papers")
+
+    recoveredPapers[firstIndex].summary = "Keep the existing personal summary."
+    recoveredPapers[firstIndex].year = "2024"
+    try CSVCodec.encode(recoveredPapers).write(to: recoveredCSV, atomically: true, encoding: .utf8)
+    _ = try writeRecoveryPDF(at: existingShelf.appendingPathComponent("Systems/new.pdf"), title: "New PDF")
+    _ = try PaperStorage.prepare(in: lostCatalogLibrary, at: existingShelf, lockDirectory: storageLock)
+    let synchronizedPapers = try CSVCodec.decode(String(contentsOf: recoveredCSV, encoding: .utf8))
+    try check(synchronizedPapers.count == 4 && synchronizedPapers[firstIndex] == recoveredPapers[firstIndex], "Synchronization lost existing metadata while adding an unlisted PDF")
+
+    let interruptedLibrary = temporaryDirectory.appendingPathComponent("interrupted-recovery")
+    _ = try LibraryLayout.prepareLibrary(at: interruptedLibrary)
+    do {
+        _ = try PaperStorage.prepare(in: interruptedLibrary, at: existingShelf, lockDirectory: storageLock, fileManager: RejectedStorageLinkFileManager())
+        throw CheckFailure.failed("The simulated storage link failure did not occur")
+    } catch let error as CocoaError {
+        try check(error.code == .fileWriteNoPermission, "Unexpected storage recovery failure")
+    }
+    try check(try Data(contentsOf: firstPDF) == firstPDFBytes, "Failed recovery changed an existing PDF")
+    try check(try FileManager.default.contentsOfDirectory(atPath: LibraryLayout.papersURL(in: interruptedLibrary).path).isEmpty, "Failed recovery did not restore the empty private Papers directory")
+    let interruptedCSV = try Data(contentsOf: LibraryLayout.catalogCSVURL(in: interruptedLibrary))
+    try check(try PaperStorage.prepare(in: interruptedLibrary, at: existingShelf, lockDirectory: storageLock), "Interrupted catalog recovery could not be retried")
+    try check(try Data(contentsOf: LibraryLayout.catalogCSVURL(in: interruptedLibrary)) == interruptedCSV, "Retry after a link failure duplicated or rewrote recovered rows")
 
     let catalogDirectory = library.appendingPathComponent("Catalog", isDirectory: true)
     try FileManager.default.createDirectory(at: catalogDirectory, withIntermediateDirectories: true)

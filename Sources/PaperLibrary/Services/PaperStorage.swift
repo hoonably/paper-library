@@ -1,6 +1,7 @@
 import CryptoKit
 import Darwin
 import Foundation
+import PDFKit
 
 /// Keep user PDFs in Documents while preserving the catalog's Papers/... paths.
 /// The private Papers entry is a link, not a second copy of the user's PDFs.
@@ -27,6 +28,15 @@ enum PaperStorage {
             guard fileManager.fileExists(atPath: source.path, isDirectory: &isDirectory), isDirectory.boolValue else {
                 throw StorageError.missingPDFDirectory(source.resolvingSymlinksInPath().path)
             }
+            let lock = try lockDirectory ?? organizerLockDirectory(in: root, fileManager: fileManager)
+            do {
+                try acquireLock(at: lock, fileManager: fileManager)
+            } catch StorageError.organizerBusy {
+                // An existing library stays readable while the organizer is writing.
+                return false
+            }
+            defer { try? fileManager.removeItem(at: lock) }
+            try recoverCatalog(in: root, from: source.resolvingSymlinksInPath(), fileManager: fileManager)
             return false
         }
         guard attributes[.type] as? FileAttributeType == .typeDirectory else {
@@ -48,16 +58,10 @@ enum PaperStorage {
             guard values.isDirectory == true, values.isSymbolicLink != true, sourceContents.isEmpty else {
                 throw StorageError.destinationConflict(target.path)
             }
-            // Recover a move interrupted just before the private link was made,
-            // but never adopt an unrelated existing folder into a new library.
-            let targetContents = try fileManager.contentsOfDirectory(atPath: target.path)
-            if !targetContents.isEmpty {
-                let papers = try CSVCodec.decode(String(contentsOf: LibraryLayout.catalogCSVURL(in: root), encoding: .utf8))
-                guard !papers.isEmpty, papers.allSatisfy({ paper in
-                    let relative = paper.file.split(separator: "/").dropFirst().joined(separator: "/")
-                    return fileManager.fileExists(atPath: target.appendingPathComponent(relative).path)
-                }) else { throw StorageError.destinationConflict(target.path) }
-            }
+            // Reattach an existing Documents shelf, including one whose local
+            // catalog was lost. Write its catalog before linking so a retry can
+            // recover if the process exits between these operations.
+            try recoverCatalog(in: root, from: target, requireExistingFiles: true, fileManager: fileManager)
             try fileManager.removeItem(at: source) // Verified empty directory.
         } else {
             try fileManager.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -83,6 +87,76 @@ enum PaperStorage {
             throw error
         }
         return true
+    }
+
+    private static func recoverCatalog(
+        in root: URL,
+        from directory: URL,
+        requireExistingFiles: Bool = false,
+        fileManager: FileManager
+    ) throws {
+        let catalogURL = LibraryLayout.catalogCSVURL(in: root)
+        var papers = try CSVCodec.decode(String(contentsOf: catalogURL, encoding: .utf8))
+        let originalCount = papers.count
+        let directory = directory.standardizedFileURL.resolvingSymlinksInPath()
+        if requireExistingFiles {
+            for paper in papers {
+                let relative = paper.file.split(separator: "/").dropFirst().joined(separator: "/")
+                let candidate = directory.appendingPathComponent(relative).resolvingSymlinksInPath()
+                guard candidate.path.hasPrefix(directory.path + "/"),
+                      (try? candidate.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+                    throw StorageError.destinationConflict(directory.path)
+                }
+            }
+        }
+        let knownFiles = Set(papers.map(\.file))
+        var enumerationError: Error?
+        guard let entries = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey, .creationDateKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants],
+            errorHandler: { _, error in enumerationError = error; return false }
+        ) else { throw StorageError.missingPDFDirectory(directory.path) }
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        for case let url as URL in entries {
+            let values = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .creationDateKey])
+            guard values.isSymbolicLink != true else {
+                continue
+            }
+            guard values.isRegularFile == true, url.pathExtension.lowercased() == "pdf",
+                  url.resolvingSymlinksInPath().path.hasPrefix(directory.path + "/") else { continue }
+            let relative = String(url.resolvingSymlinksInPath().path.dropFirst(directory.path.count + 1))
+            let file = "Papers/" + relative
+            guard !knownFiles.contains(file) else { continue }
+            let components = relative.split(separator: "/").map(String.init)
+            guard [2, 3].contains(components.count) else { continue }
+            var attributes = stat()
+            let metadata = lstat(url.path, &attributes) == 0
+                ? recoveryMetadata(at: url, fileFlags: attributes.st_flags) : nil
+            let title = (metadata?[PDFDocumentAttribute.titleAttribute] as? String)?.cleanedCell ?? ""
+            papers.append(Paper(
+                category: components[0], subcategory: components.count == 3 ? components[1] : "",
+                venue: "", year: "", track: "", workshop: "", presentation: "",
+                title: title.isEmpty ? url.deletingPathExtension().lastPathComponent : title,
+                authors: (metadata?[PDFDocumentAttribute.authorAttribute] as? String)?.cleanedCell ?? "",
+                affiliation: "", summary: "", novelty: "", site: "",
+                addedAt: dateFormatter.string(from: values.creationDate ?? Date()), file: file
+            ))
+        }
+        if let enumerationError { throw enumerationError }
+        guard papers.count != originalCount else { return }
+        // Preserve existing rows and their user-edited metadata in their original order.
+        let recovered = papers[originalCount...].sorted { $0.file < $1.file }
+        papers.replaceSubrange(originalCount..., with: recovered)
+        try CSVCodec.encode(papers).write(to: catalogURL, atomically: true, encoding: .utf8)
+    }
+
+    static func recoveryMetadata(at url: URL, fileFlags: UInt32) -> [AnyHashable: Any]? {
+        // iCloud placeholders must not block opening the library while downloading.
+        guard fileFlags & UInt32(SF_DATALESS) == 0 else { return nil }
+        return PDFDocument(url: url)?.documentAttributes
     }
 
     static func requestSpotlightImport(at url: URL) {
@@ -128,7 +202,7 @@ enum PaperStorage {
     }
 }
 
-private enum StorageError: LocalizedError {
+enum StorageError: LocalizedError {
     case organizerBusy
     case destinationConflict(String)
     case missingPDFDirectory(String)

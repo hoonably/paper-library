@@ -754,7 +754,7 @@ function csvText(records) {
   const lines = records.map((record, rowIndex) => CSV_HEADERS.map((header) => {
     const value = String(record[header] ?? "");
     if (header === "year") {
-      if (!/^\d{4}$/.test(value)) throw new Error(`CSV row ${rowIndex + 2} has an invalid year.`);
+      if (value && !/^\d{4}$/.test(value)) throw new Error(`CSV row ${rowIndex + 2} has an invalid year.`);
       return value;
     }
     return quote(value);
@@ -821,16 +821,15 @@ function cleanLibraryCommandCell(value, field) {
 
 function validateLibraryCommandRecord(record) {
   const required = [
-    "category", "venue", "year", "presentation", "title", "authors",
-    "summary", "novelty", "added_at",
+    "category", "title", "added_at",
   ];
   const missing = required.find((field) => !String(record[field] || "").trim());
   if (missing) throw new Error(`${missing} is required.`);
-  if (!/^\d{4}$/.test(record.year)) throw new Error("year must contain four digits.");
-  if (!PRESENTATION_TYPES.has(record.presentation)) {
+  if (record.year && !/^\d{4}$/.test(record.year)) throw new Error("year must contain four digits.");
+  if (record.presentation && !PRESENTATION_TYPES.has(record.presentation)) {
     throw new Error("presentation must be Preprint, Poster, Spotlight, or Oral.");
   }
-  if (record.presentation !== "Preprint" && !record.track) {
+  if (record.presentation && record.presentation !== "Preprint" && !record.track) {
     throw new Error("A published paper needs a track.");
   }
   if (record.track === "Workshop" && !record.workshop) {

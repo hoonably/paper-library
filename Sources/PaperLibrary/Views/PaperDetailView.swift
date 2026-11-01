@@ -20,16 +20,20 @@ struct PaperDetailView: View {
                         .font(.system(.title, design: .rounded, weight: .bold))
                         .textSelection(.enabled)
 
-                    Text(paper.authors)
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
+                    if !paper.authors.isEmpty {
+                        Text(paper.authors)
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
 
                     HStack(spacing: 10) {
                         Button("Open PDF", systemImage: "doc.richtext") {
                             store.openPDF(paper)
                         }
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .tint(LibraryStyle.accent)
 
                         if !paper.site.isEmpty {
                             Button("Paper Site", systemImage: "safari") {
@@ -49,25 +53,31 @@ struct PaperDetailView: View {
 
                 Divider()
 
-                DetailSection(title: "Summary", systemImage: "text.alignleft") {
-                    Text(paper.summary)
-                        .font(.body)
-                        .textSelection(.enabled)
+                if !paper.summary.isEmpty {
+                    DetailSection(title: "Summary", systemImage: "text.alignleft") {
+                        Text(paper.summary)
+                            .font(.body)
+                            .textSelection(.enabled)
+                    }
                 }
 
-                DetailSection(title: "What’s new", systemImage: "sparkles") {
-                    Text(paper.novelty)
-                        .font(.body)
-                        .textSelection(.enabled)
+                if !paper.novelty.isEmpty {
+                    DetailSection(title: "What’s new", systemImage: "sparkles") {
+                        Text(paper.novelty)
+                            .font(.body)
+                            .textSelection(.enabled)
+                    }
                 }
 
-                DetailSection(title: "Publication", systemImage: "building.columns") {
-                    Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
-                        metadataRow("Venue", paper.venue)
-                        metadataRow("Year", paper.year)
-                        metadataRow("Track", paper.track.isEmpty ? "—" : paper.track)
-                        if !paper.workshop.isEmpty { metadataRow("Workshop", paper.workshop) }
-                        metadataRow("Presentation", paper.presentation.trimmed.isEmpty ? "—" : paper.presentation)
+                if [paper.venue, paper.year, paper.track, paper.workshop, paper.presentation].contains(where: { !$0.trimmed.isEmpty }) {
+                    DetailSection(title: "Publication", systemImage: "building.columns") {
+                        Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 10) {
+                            metadataRow("Venue", paper.venue)
+                            metadataRow("Year", paper.year)
+                            metadataRow("Track", paper.track)
+                            metadataRow("Workshop", paper.workshop)
+                            metadataRow("Presentation", paper.presentation)
+                        }
                     }
                 }
 
@@ -92,12 +102,14 @@ struct PaperDetailView: View {
 
     @ViewBuilder
     private func metadataRow(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .textSelection(.enabled)
+        if !value.trimmed.isEmpty {
+            GridRow {
+                Text(label)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .textSelection(.enabled)
+            }
         }
     }
 }

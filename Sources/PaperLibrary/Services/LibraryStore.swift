@@ -52,7 +52,7 @@ final class LibraryStore: ObservableObject {
     @Published var setupLanguage = "korean"
     @Published var errorMessage: String?
     @Published var noticeMessage: String?
-    @Published private(set) var storageAccessError: String?
+    @Published private(set) var storageAccessError: Error?
     @Published private(set) var needsLibraryAccessConsent = !LibraryLayout.hasExistingCatalog()
 
     private var didPrepareLibrary = false
@@ -97,7 +97,7 @@ final class LibraryStore: ObservableObject {
             libraryURL = nil
             papers = []
             organizerStatus = .unavailable
-            storageAccessError = error.localizedDescription
+            storageAccessError = error
         }
     }
 

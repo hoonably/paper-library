@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "build": 1000002,
+  "version": "1.1.0",
+  "build": 1100000,
   "repository": "hoonably/paper-library",
   "app_name": "Paper Library",
   "public_key_file": "PaperLibrary/UpdatePublicKey.txt",
@@ -10,5 +10,6 @@
   "update_archive": "Paper-Library.zip",
   "installer": "Paper-Library-v{version}-macos-arm64.dmg",
   "bundle_identifier": "com.hoonably.PaperLibrary",
-  "source_repository": "hoonably/paper-library"
+  "source_repository": "hoonably/paper-library",
+  "site_directory": "website"
 }

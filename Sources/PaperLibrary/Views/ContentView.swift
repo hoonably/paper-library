@@ -112,17 +112,6 @@ struct ContentView: View {
         )
     }
 
-    private var categoryFilter: Binding<String> {
-        Binding(
-            get: { selectedCategory },
-            set: { category in
-                selectedCategory = category
-                selectedSubcategory = ""
-                expandedCategory = category.isEmpty ? nil : category
-            }
-        )
-    }
-
     private var sidebarSelection: Binding<SidebarSelection?> {
         Binding(
             get: {
@@ -207,61 +196,92 @@ struct ContentView: View {
 
     private var storageUnavailableView: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Image(systemName: "books.vertical.fill")
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(LibraryStyle.accent)
-                .frame(width: 64, height: 64)
-                .background(LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 16))
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your papers, in one place")
-                    .font(.system(size: 28, weight: .semibold))
-                Text("Paper Library saves PDFs in your Documents folder. Allow access when macOS asks so you can organize, open, and find your papers.")
-                    .font(.body).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(alignment: .leading, spacing: 16) {
-                Label("PDFs · Documents / Paper Library / Papers", systemImage: "folder")
-                Label("Catalog and settings · stored on this Mac", systemImage: "internaldrive")
-                Label("Finder action · starts only when you add PDFs", systemImage: "cursorarrow.click")
-            }
-            .font(.callout)
-            .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
-            if let message = store.storageAccessError {
-                Label {
-                    Text(message).fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle")
+            if case let .destinationConflict(path) = store.storageAccessError as? StorageError {
+                Image(systemName: "folder.badge.questionmark")
+                    .font(.system(size: 38)).foregroundStyle(.tint)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("PDF folder already exists").font(.title.bold())
+                    Text("Move the existing item to another location in Finder, then return here and try again.")
+                        .foregroundStyle(.secondary)
                 }
-                .font(.callout).foregroundStyle(.secondary)
-                Text("If access was denied, enable Documents Folder for Paper Library in System Settings → Privacy & Security → Files and Folders, then try again.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 12) {
-                Button(store.storageAccessError == nil ? "Continue" : "Try Again") {
-                    store.allowLibraryAccess()
-                }
-                .buttonStyle(.borderedProminent).controlSize(.large)
-                .keyboardShortcut(.defaultAction)
-                if store.storageAccessError != nil {
-                    Button("Open Settings") {
-                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")!)
+                Label(path, systemImage: "folder")
+                    .font(.callout).textSelection(.enabled)
+                HStack {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
                     }
-                    .controlSize(.large)
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    Button("Try Again") { store.allowLibraryAccess() }
                 }
+                .controlSize(.large)
+            } else {
+                Image(systemName: "books.vertical.fill")
+                    .font(.system(size: 30, weight: .medium))
+                    .foregroundStyle(LibraryStyle.accent)
+                    .frame(width: 64, height: 64)
+                    .background(LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your papers, in one place")
+                        .font(.system(size: 28, weight: .semibold))
+                    Text("Paper Library saves PDFs in your Documents folder. Allow access when macOS asks so you can organize, open, and find your papers.")
+                        .font(.body).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                VStack(alignment: .leading, spacing: 16) {
+                    Label("PDFs · Documents / Paper Library / Papers", systemImage: "folder")
+                    Label("Catalog and settings · stored on this Mac", systemImage: "internaldrive")
+                    Label("Finder action · starts only when you add PDFs", systemImage: "cursorarrow.click")
+                }
+                .font(.callout)
+                .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+                if let error = store.storageAccessError {
+                    Label {
+                        Text(error.localizedDescription).fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .font(.callout).foregroundStyle(.secondary)
+                    if isStoragePermissionError {
+                        Text("Enable Documents Folder for Paper Library in System Settings → Privacy & Security → Files and Folders, then try again.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                HStack(spacing: 12) {
+                    Button(store.storageAccessError == nil ? "Continue" : "Try Again") {
+                        store.allowLibraryAccess()
+                    }
+                    .buttonStyle(.borderedProminent).controlSize(.large)
+                    .keyboardShortcut(.defaultAction)
+                    if isStoragePermissionError {
+                        Button("Open Settings") {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")!)
+                        }
+                        .controlSize(.large)
+                    }
+                }
+                Text("Only Documents access is needed. You can close this window and finish setup later.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            Text("Only Documents access is needed. You can close this window and finish setup later.")
-                .font(.caption).foregroundStyle(.secondary)
         }
         .padding(36).frame(maxWidth: 580, alignment: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
+    private var isStoragePermissionError: Bool {
+        guard let error = store.storageAccessError as NSError? else { return false }
+        if error.domain == NSCocoaErrorDomain {
+            return [NSFileReadNoPermissionError, NSFileWriteNoPermissionError].contains(error.code)
+        }
+        return error.domain == NSPOSIXErrorDomain && [Int(EACCES), Int(EPERM)].contains(error.code)
+    }
+
     private var libraryView: some View {
         VStack(spacing: 0) {
-            OrganizerStatusHeader()
+            OrganizerStatusHeader { searchField }
             Divider()
             catalogControls
             Divider()
@@ -318,156 +338,94 @@ struct ContentView: View {
         }
     }
 
-    private var catalogControls: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search titles, authors, and key ideas", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.callout)
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Clear Search")
-                    .accessibilityLabel("Clear search")
-                }
-            }
-            .padding(.horizontal, 13)
-            .frame(height: 42)
-            .background(.quaternary.opacity(0.42), in: RoundedRectangle(cornerRadius: 11))
-            .overlay {
-                RoundedRectangle(cornerRadius: 11)
-                    .stroke(.separator.opacity(0.55), lineWidth: 1)
-            }
-
-            HStack(spacing: 8) {
-                catalogMenu(title: "Field", selection: categoryFilter, options: store.categories.map(\.name))
-                catalogMenu(title: "Venue", selection: $venueFilter, options: venues)
-                catalogMenu(title: "Year", selection: $yearFilter, options: years)
-                catalogMenu(title: "Track", selection: $trackFilter, options: tracks)
-                catalogMenu(title: "Presentation", selection: $presentationFilter, options: presentations)
-
+    private var searchField: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search titles, authors, and key ideas", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.callout)
+            if !searchText.isEmpty {
                 Button {
-                    clearFilters()
+                    searchText = ""
                 } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(.quaternary.opacity(0.42), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(.separator.opacity(0.55), lineWidth: 1)
-                        }
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Reset Search and Filters")
-                .accessibilityLabel("Reset search and filters")
-                .disabled(!hasActiveFilters)
-
-                Divider()
-                    .frame(height: 32)
-
-                sortControl
+                .help("Clear Search")
+                .accessibilityLabel("Clear search")
             }
         }
-        .padding(12)
+        .padding(.horizontal, 13)
+        .frame(height: 42)
+        .background(.quaternary.opacity(0.42), in: RoundedRectangle(cornerRadius: 11))
+        .overlay {
+            RoundedRectangle(cornerRadius: 11)
+                .stroke(.separator.opacity(0.55), lineWidth: 1)
+        }
+    }
+
+    private var catalogControls: some View {
+        HStack(spacing: 10) {
+            catalogMenu(title: "Venue", systemImage: "building.columns", selection: $venueFilter, options: venues)
+            catalogMenu(title: "Year", systemImage: "calendar", selection: $yearFilter, options: years)
+            Menu {
+                filterPicker("Track", selection: $trackFilter, options: tracks).pickerStyle(.menu)
+                filterPicker("Presentation", selection: $presentationFilter, options: presentations).pickerStyle(.menu)
+            } label: {
+                Label("More filters", systemImage: "line.3.horizontal.decrease")
+            }
+            .fixedSize()
+            if !trackFilter.isEmpty || !presentationFilter.isEmpty {
+                Text([trackFilter, presentationFilter].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            if hasActiveFilters {
+                Button("Reset") { clearFilters() }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Reset search and filters")
+            }
+            Spacer(minLength: 0)
+            sortControl
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 7)
         .background(.bar)
     }
 
-    private func catalogMenu(
-        title: String,
-        selection: Binding<String>,
-        options: [String]
-    ) -> some View {
-        Menu {
-            Button {
-                selection.wrappedValue = ""
-            } label: {
-                if selection.wrappedValue.isEmpty {
-                    Label("All \(title)s", systemImage: "checkmark")
-                } else {
-                    Text("All \(title)s")
-                }
-            }
-            Divider()
-            ForEach(options, id: \.self) { option in
-                Button {
-                    selection.wrappedValue = option
-                } label: {
-                    if selection.wrappedValue == option {
-                        Label(option, systemImage: "checkmark")
-                    } else {
-                        Text(option)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Text(selection.wrappedValue.isEmpty ? title : selection.wrappedValue)
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
-                Spacer(minLength: 3)
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, minHeight: 40)
-            .background(selection.wrappedValue.isEmpty ? Color.primary.opacity(0.035) : LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(selection.wrappedValue.isEmpty ? Color(nsColor: .separatorColor).opacity(0.55) : LibraryStyle.accent.opacity(0.4), lineWidth: 1)
-            }
+    private func filterPicker(_ title: String, selection: Binding<String>, options: [String]) -> some View {
+        Picker(title, selection: selection) {
+            Text("All").tag("")
+            ForEach(options, id: \.self) { Text($0).tag($0) }
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
-        .help("Filter by \(title.lowercased())")
+    }
+
+    private func catalogMenu(title: String, systemImage: String, selection: Binding<String>, options: [String]) -> some View {
+        Menu {
+            filterPicker(title, selection: selection, options: options)
+                .pickerStyle(.inline)
+        } label: {
+            Label(selection.wrappedValue.isEmpty ? title : selection.wrappedValue, systemImage: systemImage)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
+        .fixedSize()
+        .accessibilityLabel("Filter by \(title.lowercased())")
+        .accessibilityValue(selection.wrappedValue.isEmpty ? "All" : selection.wrappedValue)
     }
 
     private var sortControl: some View {
         Menu {
-            ForEach(CatalogSort.allCases) { option in
-                Button {
-                    sort = option
-                } label: {
-                    if sort == option {
-                        Label(option.rawValue, systemImage: "checkmark")
-                    } else {
-                        Text(option.rawValue)
-                    }
-                }
+            Picker("Sort by", selection: $sort) {
+                ForEach(CatalogSort.allCases) { Text($0.rawValue).tag($0) }
             }
+            .pickerStyle(.inline)
         } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "arrow.up.arrow.down")
-                    .font(.caption.weight(.bold))
-                Text(sort.rawValue)
-                    .font(.callout.weight(.semibold))
-                    .lineLimit(1)
-                Spacer(minLength: 3)
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.bold))
-            }
-            .foregroundStyle(.tint)
-            .padding(.horizontal, 12)
-            .frame(minWidth: 150, maxWidth: .infinity, minHeight: 40)
-            .background(LibraryStyle.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(LibraryStyle.accent.opacity(0.55), lineWidth: 1)
-            }
+            Label(sort.rawValue, systemImage: "arrow.up.arrow.down")
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .frame(minWidth: 150, maxWidth: 1.3 * 150)
-        .help("Sort Papers")
+        .help("Sort papers")
+        .fixedSize()
     }
 
     private var sidebar: some View {

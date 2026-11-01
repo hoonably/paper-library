@@ -100,6 +100,7 @@ struct PaperEditorView: View {
                         GridRow {
                             rowLabel("Presentation")
                             Picker("Presentation", selection: $draft.presentation) {
+                                Text("Not set").tag("")
                                 ForEach(["Preprint", "Poster", "Spotlight", "Oral"], id: \.self) { value in
                                     Text(value).tag(value)
                                 }
