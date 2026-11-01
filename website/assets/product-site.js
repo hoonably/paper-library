@@ -7,6 +7,10 @@ document.querySelectorAll('[data-feature-gallery]').forEach(gallery => {
       tab.setAttribute('aria-selected', String(active));
       tab.tabIndex = active ? 0 : -1;
       panels[i].hidden = !active;
+      if (active) {
+        const image = panels[i].querySelector('img');
+        if (image) image.loading = 'eager';
+      }
     });
   };
   tabs.forEach((tab, index) => {

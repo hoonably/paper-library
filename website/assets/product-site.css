@@ -1,6 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;650;700;750;800&family=Noto+Sans+KR:wght@400;450;500;550;600;650;700;750;800&display=swap");
 /* Typography, spacing and breakpoints follow When2Jam src/landing.css. */
-:root{--ink:#243d32;--muted:#66786d;--accent:#256b54;--soft:#edf4ee;--line:#dfe7de;--paper:#f8faf8;color-scheme:light;font-synthesis:none}
+:root{--ink:#243d32;--muted:#5f7166;--accent:#256b54;--soft:#edf4ee;--line:#dfe7de;--paper:#f8faf8;color-scheme:light;font-synthesis:none}
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:28px}
@@ -74,11 +74,11 @@ p,h1,h2,h3,figure{margin:0}
 .section-top>p{font-size:12px;line-height:1.8;color:var(--muted)}
 .feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
 .feature{padding:29px 30px 22px;border:1px solid var(--line);border-radius:13px;background:#fff}
-.feature-number{color:#85988b;font-size:10px}
+.feature-number{color:var(--muted);font-size:10px}
 .feature h3,.feature-title{display:block;font-size:21px;font-weight:670;margin:22px 0 12px;letter-spacing:-.7px;word-break:keep-all}
 .feature p,.feature-description{display:block;font-size:12px;line-height:1.9;color:var(--muted);word-break:keep-all}
 .feature-gallery{--stage-height:520px;--caption-height:48px}
-.feature-gallery .feature{position:relative;text-align:left;color:var(--ink);transition:transform .16s,border-color .16s,background .16s,box-shadow .16s}
+.feature-gallery .feature{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:left;color:var(--ink);transition:transform .16s,border-color .16s,background .16s,box-shadow .16s}
 .feature-gallery .feature:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 25px #35573b0c}
 .feature-gallery .feature[aria-selected="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,white)}
 .feature-indicator{position:absolute;top:29px;right:25px;width:15px;height:15px;color:var(--accent);opacity:0}
@@ -135,7 +135,7 @@ img[src$="/finder.png"]{border-radius:0;box-shadow:none}
 
 .hero h1{font-size:48px}
 
-.hero-visual{width:min(390px,calc(100% - 25px));justify-self:center}
+.hero-visual{width:min(390px,calc(100% - 25px));height:auto;justify-self:center}
 
 .mock{transform:rotate(-1.5deg)}
 
@@ -166,7 +166,7 @@ img[src$="/finder.png"]{border-radius:0;box-shadow:none}
 
 .hero-description{font-size:12px}
 
-.hero-visual{width:calc(100% - 18px);height:345px}
+.hero-visual{width:calc(100% - 18px);height:auto}
 .hero-visual .portrait .screenshot{max-width:280px}
 .mock{padding-block:18px 12px}
 .mock-step{padding-block:5px}
