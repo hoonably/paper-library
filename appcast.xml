@@ -1,8 +1,21 @@
-<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+<?xml version="1.0" standalone="yes"?>
+<!-- sparkle-sign-warning:
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
---><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+-->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Paper Library</title>
+        <item>
+            <title>1.0.1</title>
+            <pubDate>Sun, 01 Nov 2026 08:35:02 +0000</pubDate>
+            <link>https://github.com/hoonably/paper-library/releases</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/hoonably/paper-library/releases/tag/v1.0.1</sparkle:fullReleaseNotesLink>
+            <sparkle:version>1100001</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/hoonably/paper-library/releases/download/v1.0.1/Paper-Library.zip" length="2807670" type="application/octet-stream" sparkle:edSignature="tURsR2USeGo5434W5g+jkacfyyo4Zr4wFlQF9lkS/zyG4Wsyo8kzWKyHbWzf1M+OWllXZHlb9Exo7gmj42q2Cw=="/>
+        </item>
         <item>
             <title>1.0.0</title>
             <pubDate>Sat, 31 Oct 2026 03:53:27 +0000</pubDate>
@@ -12,10 +25,11 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/hoonably/paper-library/releases/download/v1.0.0/Paper-Library.zip" length="2794178" type="application/octet-stream" sparkle:edSignature="o2Joxs6QMNMzFQWhobqd+o8qX/gKQ6qpdljU6oyuxYs5YX2K+0TJiNd54Rj58a8AtIiE1GDX+Wr0BYRVQwxaBg=="></enclosure>
+            <enclosure url="https://github.com/hoonably/paper-library/releases/download/v1.0.0/Paper-Library.zip" length="2794178" type="application/octet-stream" sparkle:edSignature="o2Joxs6QMNMzFQWhobqd+o8qX/gKQ6qpdljU6oyuxYs5YX2K+0TJiNd54Rj58a8AtIiE1GDX+Wr0BYRVQwxaBg=="/>
         </item>
     </channel>
-</rss><!-- sparkle-signatures:
-edSignature: CnXbCNAIKEC+BEb7G9xFcCtCQ/4BrqaPRDE/otaZozq12psS+GX4VJsKb1bUd1OYNHWFbk0mykbl8WpPhYIoDA==
-length: 1346
+</rss>
+<!-- sparkle-signatures:
+edSignature: 5xj013tfOi3GPIx9fAhjkCuinCm5Ptt4iOJ6NeZsLymKTyMbQYkB+ES9BYK5ZYNri2RLGiBja8O2fojN1GsXBw==
+length: 2239
 -->
