@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build signed release files using only the pinned CI signing identity."""
 from pathlib import Path
-import json,os,subprocess,sys,shutil
+import json,os,subprocess,shutil
 root=Path(__file__).resolve().parents[1];os.chdir(root)
 cfg=json.loads((root/'release.json').read_text())
 import xml.etree.ElementTree as ET

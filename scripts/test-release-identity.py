@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Missing or mismatched local keys must never create or rotate a release key."""
 from pathlib import Path
-import base64,hashlib,json,os,subprocess,tempfile
+import base64,json,os,subprocess,tempfile
 root=Path(__file__).resolve().parents[1]
 cfg=json.loads((root/'release.json').read_text())
 public=root/cfg['public_key_file'];before=public.read_bytes()
