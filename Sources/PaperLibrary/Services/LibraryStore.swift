@@ -40,6 +40,7 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var libraryURL: URL?
     @Published private(set) var isLoading = false
     @Published private(set) var isSettingUpAutomation = false
+    @Published private(set) var automationSetupError: String?
     @Published private(set) var isRunningLibraryCommand = false
     @Published private(set) var organizerStatus = OrganizerStatus.unavailable
     @Published private(set) var codexCLIReadiness = CodexCLIReadiness.notChecked
@@ -244,6 +245,8 @@ final class LibraryStore: ObservableObject {
     }
 
     func presentAutomationSetup() {
+        guard !isSettingUpAutomation else { return }
+        automationSetupError = nil
         isShowingAutomationSetup = true
         checkCodexCLI()
     }
@@ -278,6 +281,7 @@ final class LibraryStore: ObservableObject {
         let model = organizerStatus.model
         let reasoning = organizerStatus.reasoning
         let language = setupLanguage
+        automationSetupError = nil
         isSettingUpAutomation = true
         Task { @MainActor [weak self] in
             let result = await Task.detached {
@@ -298,7 +302,7 @@ final class LibraryStore: ObservableObject {
                 self.isShowingAutomationSetup = false
                 self.noticeMessage = "Paper Organizer is ready. A Finder action will start it only when PDFs are added."
             case .failure(let message):
-                self.errorMessage = message
+                self.automationSetupError = message
             }
         }
     }
@@ -548,11 +552,14 @@ final class LibraryStore: ObservableObject {
         process.standardError = output
         do {
             try process.run()
-            process.waitUntilExit()
             let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             let text = String(decoding: data, as: UTF8.self).trimmed
             guard process.terminationStatus == 0 else {
-                return .failure(text.isEmpty ? "Paper Organizer setup failed." : text)
+                let detail = text.split(separator: "\n")
+                    .first { $0.hasPrefix("Error: ") }
+                    .map { String($0.dropFirst(7)) }
+                return .failure(detail ?? (text.isEmpty ? "Paper Organizer setup failed. Try again." : text))
             }
             return .success
         } catch {

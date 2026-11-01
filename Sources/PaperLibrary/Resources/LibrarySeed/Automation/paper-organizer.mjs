@@ -1057,14 +1057,27 @@ async function normalizeCatalogFiles(root, applyChanges) {
     };
   });
 
-  const targetKeys = new Set();
+  const targetCounts = new Map();
   for (const plan of plans) {
-    const key = plan.toRelative.toLocaleLowerCase();
-    if (targetKeys.has(key)) throw new Error(`Portable filename collision: ${plan.toRelative}`);
-    targetKeys.add(key);
-    const from = path.resolve(root, ...plan.fromRelative.split("/"));
-    if (!from.startsWith(root + path.sep)) throw new Error(`Catalog path escapes the library: ${plan.fromRelative}`);
+    const key = plan.toRelative.normalize("NFC").toLocaleLowerCase();
+    targetCounts.set(key, (targetCounts.get(key) || 0) + 1);
+    const from = safeLibraryPdf(root, plan.fromRelative);
     await fsp.access(from);
+  }
+
+  for (const plan of plans) {
+    const key = plan.toRelative.normalize("NFC").toLocaleLowerCase();
+    const to = safeLibraryPdf(root, plan.toRelative);
+    if (plan.fromRelative !== plan.toRelative &&
+        (targetCounts.get(key) > 1 || await pathExists(to))) {
+      // A case-insensitive filesystem may resolve the proposed title to the
+      // source itself. Other existing PDFs must also keep their own paths.
+      // Both cases are already usable and do not prevent automation setup.
+      plan.toRelative = plan.fromRelative;
+      const components = plan.fromRelative.split("/");
+      plan.toCategory = components[1];
+      plan.toSubcategory = components.length === 4 ? components[2] : "";
+    }
   }
   const changes = plans.filter((plan) =>
     plan.fromRelative !== plan.toRelative ||
@@ -1856,10 +1869,8 @@ async function install(root, options) {
     device,
     servicePath: servicePath(node, codex),
   };
-  const normalized = await normalizeCatalogFiles(root, true);
-  if (normalized.length) {
-    console.log(`Normalized ${normalized.length} existing catalog PDF(s).`);
-  }
+  // Setup connects the organizer. Existing PDFs keep their filenames and paths.
+  await normalizeCatalogFiles(root, false);
   if (settingsChanged) settings = await writeOrganizerSettings(root, settings);
   await writeJson(path.join(root, CATALOG_DIRECTORY, "codex-models.json"), modelCatalog);
   await disableLegacyBackgroundService(root, paths, false);
@@ -1975,7 +1986,7 @@ async function doctor(root, options) {
   console.log(`Codex login: ${login.status === 0 ? "ready" : "not signed in"}`);
   console.log(`PDF text tool: ${pdfTool || "not found (install Poppler or Python pypdf for reliable local extraction)"}`);
   const incompatible = await normalizeCatalogFiles(root, false);
-  console.log(`Catalog layout and filenames: ${incompatible.length ? `${incompatible.length} will be normalized during install` : "ready"}`);
+  console.log(`Catalog layout and filenames: ${incompatible.length ? `${incompatible.length} available for optional normalization` : "ready"}`);
   if (rootNeedsMacPrivacyPermission(root)) {
     console.log("macOS privacy: protected folder; the installer will prefer an app-bundled Codex when available.");
   }

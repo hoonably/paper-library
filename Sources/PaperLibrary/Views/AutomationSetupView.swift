@@ -29,10 +29,29 @@ struct AutomationSetupView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
+                .disabled(store.isSettingUpAutomation)
             }
 
             setupSection(number: "2", title: "Codex CLI") {
                 cliStatus
+            }
+
+            if let error = store.automationSetupError {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Setup couldn’t finish", systemImage: "exclamationmark.triangle")
+                        .font(.callout.weight(.semibold))
+                    ScrollView {
+                        Text(error)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 110)
+                }
+                .foregroundStyle(.red)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
             }
 
             Label {
@@ -50,6 +69,7 @@ struct AutomationSetupView: View {
                     store.isShowingAutomationSetup = false
                 }
                 .keyboardShortcut(.cancelAction)
+                .disabled(store.isSettingUpAutomation)
 
                 Spacer()
 
@@ -73,6 +93,7 @@ struct AutomationSetupView: View {
         .padding(28)
         .frame(width: 540)
         .tint(LibraryStyle.accent)
+        .interactiveDismissDisabled(store.isSettingUpAutomation)
     }
 
     @ViewBuilder
