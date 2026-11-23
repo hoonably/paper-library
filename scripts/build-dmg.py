@@ -34,7 +34,7 @@ def main() -> None:
         background = temporary / "background.tiff"
         subprocess.run(["xcrun", "swift", str(root / "scripts/build-dmg-background.swift"), str(background)], check=True)
         image = temporary / output.name
-        dmgbuild.build_dmg(str(image), "Paper Library", settings={
+        dmgbuild.build_dmg(str(image), "Install Paper Library", settings={
             "format": "UDZO",
             "filesystem": "HFS+",
             "files": [str(app)],
