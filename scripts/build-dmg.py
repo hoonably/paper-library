@@ -41,7 +41,7 @@ def main() -> None:
             "symlinks": {"Applications": "/Applications"},
             "icon": str(app / "Contents/Resources/AppIcon.icns"),
             "background": str(background),
-            "window_rect": ((240, 200), (640, 420)),
+            "window_rect": ((120, 70), (640, 580)),
             "default_view": "icon-view",
             "include_icon_view_settings": True,
             "include_list_view_settings": False,
