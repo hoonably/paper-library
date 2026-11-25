@@ -9,4 +9,6 @@ if (window.parent !== window) {
   window.addEventListener("message", event => {
     if (event.source === window.parent && event.data === "product-cover:measure") reportHeight();
   });
+  // A hidden cross-origin frame can defer ResizeObserver until it becomes visible.
+  reportHeight();
 }
